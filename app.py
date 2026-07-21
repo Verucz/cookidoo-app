@@ -1,672 +1,142 @@
-import streamlit as st
-import random
-import urllib.parse
+import React, { useState, useMemo } from "react";
 
-st.set_page_config(page_title="Thermomix Jídelníček", page_icon="🍲", layout="wide")
+/* --------------------------------------------------------- 
+Databáze receptů — reálné recepty a odkazy z cookidoo.cz 
+(kalorie u receptů bez zveřejněné nutriční hodnoty jsou 
+orientační odhady, přesná data ukáže Cookidoo po přihlášení) 
+kategorie: snidane | obed | vecere | svacina 
+--------------------------------------------------------- */ 
+const RECIPES = [ 
+// SNÍDANĚ 
+{ id: "s1", cat: "snidane", name: "Ovesná kaše se skořicí", kcal: 320, icon: "🥣", url: "https://cookidoo.cz/recipes/recipe/cs/r73547" }, 
+{ id: "s2", cat: "snidane", name: "Ovesná kaše s ovocem", kcal: 300, icon: "🍓", url: "https://cookidoo.cz/recipes/recipe/cs/r73425" }, 
+{ id: "s3", cat: "snidane", name: "Jablečná ovesná kaše", kcal: 300, icon: "🍎", url: "https://cookidoo.cz/recipes/recipe/cs/r133742" }, 
+{ id: "s4", cat: "snidane", name: "Vločková kaše", kcal: 280, icon: "🥄", url: "https://cookidoo.cz/recipes/recipe/cs/r87338" }, 
+{ id: "s5", cat: "snidane", name: "Ovocný dezert s bílým jogurtem a domácí granolou", kcal: 629, icon: "🍇", url: "https://cookidoo.cz/recipes/recipe/cs/r177499" }, 
+{ id: "s6", cat: "snidane", name: "Banánový jogurt", kcal: 395, icon: "🍌", url: "https://cookidoo.cz/recipes/recipe/cs/r73426" }, 
+{ id: "s7", cat: "snidane", name: "Toust s avokádem a vejcem Benedikt", kcal: 420, icon: "🥑", url: "https://cookidoo.cz/recipes/recipe/cs/r548454" }, 
+{ id: "s8", cat: "snidane", name: "Španělská bramborová omeleta", kcal: 481, icon: "🍳", url: "https://cookidoo.cz/recipes/recipe/cs/r70468" },
 
-st.title("🍲 Thermomix & Cookidoo Plánovač Jídelníčku")
+// OBĚD 
+{ id: "o1", cat: "obed", name: "Kuřecí prsa v jogurtové omáčce s bramborami", kcal: 375, icon: "🍗", url: "https://cookidoo.cz/recipes/recipe/cs/r67384" }, 
+{ id: "o2", cat: "obed", name: "Kuře po asijsku s rýží a zeleninou", kcal: 560, icon: "🍚", url: "https://cookidoo.cz/recipes/recipe/cs/r113021" }, 
+{ id: "o3", cat: "obed", name: "Hovězí guláš s kulatými houskovými knedlíky", kcal: 554, icon: "🍲", url: "https://cookidoo.cz/recipes/recipe/cs/r134686" }, 
+{ id: "o4", cat: "obed", name: "Klasický maďarský guláš", kcal: 420, icon: "🥘", url: "https://cookidoo.cz/recipes/recipe/cs/r134656" }, 
+{ id: "o5", cat: "obed", name: "Losos s bramborami, brokolicí a koprovou omáčkou", kcal: 520, icon: "🐟", url: "https://cookidoo.cz/recipes/recipe/cs/r815752" }, 
+{ id: "o6", cat: "obed", name: "Losos se zeleninou a kuskusem", kcal: 393, icon: "🥗", url: "https://cookidoo.cz/recipes/recipe/cs/r154943" }, 
+{ id: "o7", cat: "obed", name: "Krůtí špíz s rýží a zeleninovou omáčkou", kcal: 480, icon: "🍢", url: "https://cookidoo.cz/recipes/recipe/cs/r69952" }, 
+{ id: "o8", cat: "obed", name: "Kuřecí se zeleninou, rýží a teriyaki omáčkou v páře", kcal: 540, icon: "🥦", url: "https://cookidoo.cz/recipes/recipe/cs/r302491" },
 
-# Pomocná funkce pro spolehlivé vyhledání přesného názvu na Cookidoo
-def cookidoo_search(dotaz):
-    encoded = urllib.parse.quote(dotaz)
-    return f"https://cookidoo.cz/search/cs?context=recipes&query={encoded}"
+// VEČEŘE 
+{ id: "v1", cat: "vecere", name: "Losos s bramborovou kaší", kcal: 221, icon: "🐟", url: "https://cookidoo.cz/recipes/recipe/cs/r87071" }, 
+{ id: "v2", cat: "vecere", name: "Krémová zeleninová polévka", kcal: 90, icon: "🍵", url: "https://cookidoo.cz/recipes/recipe/cs/r55011" }, 
+{ id: "v3", cat: "vecere", name: "Bílá zelná polévka se šťouchanými brambory", kcal: 192, icon: "🥣", url: "https://cookidoo.cz/recipes/recipe/cs/r72362" }, 
+{ id: "v4", cat: "vecere", name: "Zeleninová polévka s těstovinami", kcal: 160, icon: "🍝", url: "https://cookidoo.cz/recipes/recipe/cs/r418225" }, 
+{ id: "v5", cat: "vecere", name: "Čočková polévka s rajčaty", kcal: 254, icon: "🍅", url: "https://cookidoo.cz/recipes/recipe/cs/r86542" }, 
+{ id: "v6", cat: "vecere", name: "Krémová polévka z červené čočky", kcal: 272, icon: "🥕", url: "https://cookidoo.cz/recipes/recipe/cs/r785604" }, 
+{ id: "v7", cat: "vecere", name: "Bramborová kaše s medvědím česnekem a hořčičným máslem", kcal: 498, icon: "🧈", url: "https://cookidoo.cz/recipes/recipe/cs/r725086" }, 
+{ id: "v8", cat: "vecere", name: "Bramborovo-dýňová kaše", kcal: 312, icon: "🎃", url: "https://cookidoo.cz/recipes/recipe/cs/r265473" },
 
-# Databáze reálných receptů z českého Cookidoo (110+ pro každou kategorii)
-@st.cache_data
-def nacti_realnou_databazi():
-    return {
-        "Snídaně": [
-            {"nazev": "Nadýchané americké palačinky (Pancakes)", "kcal": 430, "link": "https://cookidoo.cz/recipes/recipe/cs/r88410"},
-            {"nazev": "Palačinky (Crêpes)", "kcal": 380, "link": "https://cookidoo.cz/recipes/recipe/cs/r54963"},
-            {"nazev": "Palačinky s tvarohem", "kcal": 400, "link": "https://cookidoo.cz/recipes/recipe/cs/r52523"},
-            {"nazev": "Čokoládové palačinky", "kcal": 420, "link": "https://cookidoo.cz/recipes/recipe/cs/r73428"},
-            {"nazev": "Palačinky z ovesných otrub a tvarohu", "kcal": 360, "link": "https://cookidoo.cz/recipes/recipe/cs/r178395"},
-            {"nazev": "Crêpes Suzette", "kcal": 410, "link": "https://cookidoo.cz/recipes/recipe/cs/r178389"},
-            {"nazev": "Krupicová kaše pro děti", "kcal": 340, "link": "https://cookidoo.cz/recipes/recipe/cs/r73541"},
-            {"nazev": "Bílý a kokosový jogurt", "kcal": 200, "link": "https://cookidoo.cz/recipes/recipe/cs/r6875"},
-            {"nazev": "Jogurtovo-citrónové muffiny", "kcal": 207, "link": "https://cookidoo.cz/recipes/recipe/cs/r93006"},
-            {"nazev": "Pomerančovo-brusinkové muffiny", "kcal": 250, "link": "https://cookidoo.cz/recipes/recipe/cs/r93011"},
-            {"nazev": "Míchaná vejce na másle", "kcal": 320, "link": cookidoo_search("Míchaná vejce")},
-            {"nazev": "Shakshuka", "kcal": 380, "link": cookidoo_search("Shakshuka")},
-            {"nazev": "Avokádový toast s vejcem", "kcal": 410, "link": cookidoo_search("Avokádový toast s vejcem")},
-            {"nazev": "Ovesná kaše s jablky a skořicí", "kcal": 350, "link": cookidoo_search("Ovesná kaše s jablky")},
-            {"nazev": "Rýžová kaše s malinami", "kcal": 330, "link": cookidoo_search("Rýžová kaše")},
-            {"nazev": "Pohanková kaše s medem a ořechy", "kcal": 360, "link": cookidoo_search("Pohanková kaše")},
-            {"nazev": "Jáhlová kaše s meruňkami", "kcal": 340, "link": cookidoo_search("Jáhlová kaše")},
-            {"nazev": "Domácí zapékané muesli (Granola)", "kcal": 410, "link": cookidoo_search("Granola")},
-            {"nazev": "Lívance s borůvkami", "kcal": 390, "link": cookidoo_search("Lívance s borůvkami")},
-            {"nazev": "Tvarohové lívance s jahodovým přelivem", "kcal": 410, "link": cookidoo_search("Tvarohové lívance")},
-            {"nazev": "Banánové lívance ze 3 surovin", "kcal": 370, "link": cookidoo_search("Banánové lívance")},
-            {"nazev": "Vajíčková pomazánka s pažítkou", "kcal": 340, "link": cookidoo_search("Vajíčková pomazánka")},
-            {"nazev": "Snídaňové burrito s míchanými vejci", "kcal": 450, "link": cookidoo_search("Snídaňové burrito")},
-            {"nazev": "Pošírované vejce s holandskou omáčkou", "kcal": 420, "link": cookidoo_search("Vejce Benedikt")},
-            {"nazev": "Omeleta se žampióny a sýrem", "kcal": 380, "link": cookidoo_search("Omeleta se žampióny")},
-            {"nazev": "Brioška s máslem a džemem", "kcal": 400, "link": cookidoo_search("Brioška")},
-            {"nazev": "Domácí skořicové šneky", "kcal": 440, "link": cookidoo_search("Skořicové šneky")},
-            {"nazev": "Chlebíček s rybí pomazánkou", "kcal": 330, "link": cookidoo_search("Rybí pomazánka")},
-            {"nazev": "Smoothie bowl s mangem a banánem", "kcal": 320, "link": cookidoo_search("Smoothie bowl")},
-            {"nazev": "Belgické waffle", "kcal": 430, "link": cookidoo_search("Waffle")},
-            {"nazev": "Chléb ve vajíčku", "kcal": 390, "link": cookidoo_search("Chléb ve vajíčku")},
-            {"nazev": "Snídaňová quesadilla s šunkou a sýrem", "kcal": 440, "link": cookidoo_search("Quesadilla")},
-            {"nazev": "Tvarohová pěna s lesním ovocem", "kcal": 280, "link": cookidoo_search("Tvarohová pěna")},
-            {"nazev": "Chia pudink s kokosovým mlékem", "kcal": 310, "link": cookidoo_search("Chia pudink")},
-            {"nazev": "Cottage sýr s pažitkou a ředkvičkami", "kcal": 250, "link": cookidoo_search("Cottage")},
-            {"nazev": "Pečené ovesné vločky s banánem", "kcal": 360, "link": cookidoo_search("Pečené ovesné vločky")},
-            {"nazev": "Croissant s čokoládovou náplní", "kcal": 420, "link": cookidoo_search("Croissant")},
-            {"nazev": "Šunková pěna s pečeným toastem", "kcal": 350, "link": cookidoo_search("Šunková pěna")},
-            {"nazev": "Omeleta se špenátem a fetou", "kcal": 370, "link": cookidoo_search("Omeleta špenát")},
-            {"nazev": "Zapečený toast s rajčetem a mozzarellou", "kcal": 390, "link": cookidoo_search("Zapečený toast")},
-            {"nazev": "Kefírové lívanečky", "kcal": 380, "link": cookidoo_search("Kefírové lívance")},
-            {"nazev": "Domácí termix s kakaem", "kcal": 290, "link": cookidoo_search("Termix")},
-            {"nazev": "Pudinkový pohár s piškoty", "kcal": 310, "link": cookidoo_search("Pudinkový pohár")},
-            {"nazev": "Ovesné muffins s borůvkami", "kcal": 290, "link": cookidoo_search("Ovesné muffiny")},
-            {"nazev": "Toasty s avokádem a pošírovaným vejcem", "kcal": 410, "link": cookidoo_search("Toast avokádo")},
-            {"nazev": "Míchaná vejce s uzeným lososem", "kcal": 390, "link": cookidoo_search("Vejce uzený losos")},
-            {"nazev": "Parené buchty s povidly", "kcal": 460, "link": cookidoo_search("Pařené buchty")},
-            {"nazev": "Domácí loupáčky s makovou posypkou", "kcal": 370, "link": cookidoo_search("Loupáčky")},
-            {"nazev": "Müsli tyčinky s medem a ořechy", "kcal": 320, "link": cookidoo_search("Müsli tyčinky")},
-            {"nazev": "Snídaňové pitas s humusem a zeleninou", "kcal": 380, "link": cookidoo_search("Pita hummus")},
-            {"nazev": "Domácí pribináček", "kcal": 310, "link": cookidoo_search("Pribináček")},
-            {"nazev": "Pečený grahamový toast s máslem", "kcal": 280, "link": cookidoo_search("Grahamový toast")},
-            {"nazev": "Ovesná kaše s hořkou čokoládou", "kcal": 370, "link": cookidoo_search("Ovesná kaše čokoláda")},
-            {"nazev": "Míchaná vejce na cibulce", "kcal": 330, "link": cookidoo_search("Míchaná vejce cibulka")},
-            {"nazev": "Tvarohové knedlíky plněné jahodami", "kcal": 430, "link": cookidoo_search("Tvarohové knedlíky jahody")},
-            {"nazev": "Žemlovka s jablky a tvarohem", "kcal": 420, "link": cookidoo_search("Žemlovka")},
-            {"nazev": "Dýňové lívance se skořicí", "kcal": 380, "link": cookidoo_search("Dýňové lívance")},
-            {"nazev": "Snídaňová polévka Miso", "kcal": 220, "link": cookidoo_search("Miso polévka")},
-            {"nazev": "Jablečný koláč s drobenkou", "kcal": 390, "link": cookidoo_search("Jablečný koláč")},
-            {"nazev": "Makovec s citrónovou polevou", "kcal": 380, "link": cookidoo_search("Makovec")},
-            {"nazev": "Perník na plech s čokoládou", "kcal": 390, "link": cookidoo_search("Perník na plech")},
-            {"nazev": "Bublanina s třešněmi", "kcal": 360, "link": cookidoo_search("Bublanina třešně")},
-            {"nazev": "Slaný koláč s pórkem a slaninou", "kcal": 450, "link": cookidoo_search("Slaný koláč pórek")},
-            {"nazev": "Bramborové placky s tvarohem", "kcal": 410, "link": cookidoo_search("Bramborové placky")},
-            {"nazev": "Frittata se šunkou a hráškem", "kcal": 370, "link": cookidoo_search("Frittata šunka")},
-            {"nazev": "Pečená omeleta z trouby", "kcal": 350, "link": cookidoo_search("Pečená omeleta")},
-            {"nazev": "Vaječný salát s majonézou a pečivem", "kcal": 440, "link": cookidoo_search("Vaječný salát")},
-            {"nazev": "Toast s arašídovým máslem a banánem", "kcal": 420, "link": cookidoo_search("Arašídové máslo banán")},
-            {"nazev": "Lívance z podmáslí", "kcal": 390, "link": cookidoo_search("Lívance podmáslí")},
-            {"nazev": "Cuketové lívance na sladko", "kcal": 350, "link": cookidoo_search("Cuketové lívance")},
-            {"nazev": "Tvarohová žemlovka", "kcal": 410, "link": cookidoo_search("Tvarohová žemlovka")},
-            {"nazev": "Palačinky plněné špenátem a sýrem", "kcal": 430, "link": cookidoo_search("Palačinky špenát sýr")},
-            {"nazev": "Zapečené palačinky s tvarohem", "kcal": 450, "link": cookidoo_search("Zapečené palačinky")},
-            {"nazev": "Míchaná vejce se slaninou", "kcal": 410, "link": cookidoo_search("Míchaná vejce slanina")},
-            {"nazev": "Párky s hořčicí a chlebem", "kcal": 450, "link": cookidoo_search("Párky chléb")},
-            {"nazev": "Volská oka s opékanou šunkou", "kcal": 380, "link": cookidoo_search("Volské oko šunka")},
-            {"nazev": "Snídaňová pizza z pitas chleba", "kcal": 460, "link": cookidoo_search("Snídaňová pizza")},
-            {"nazev": "Ovesný koláč s jablky", "kcal": 360, "link": cookidoo_search("Ovesný koláč jablka")},
-            {"nazev": "Jablečné lívance s tvarohem", "kcal": 390, "link": cookidoo_search("Jablečné lívance")},
-            {"nazev": "Krupičná kaše s kakaem a máslem", "kcal": 370, "link": cookidoo_search("Krupicová kaše kakao")},
-            {"nazev": "Ovesná kaše s lesním ovocem", "kcal": 340, "link": cookidoo_search("Ovesná kaše lesní ovoce")},
-            {"nazev": "Chlebové placky s česnekovým máslem", "kcal": 410, "link": cookidoo_search("Chlebové placky")},
-            {"nazev": "Jogurtový pohár s muesli a malinami", "kcal": 300, "link": cookidoo_search("Jogurtový pohár maliny")},
-            {"nazev": "Kakaový závin s tvarohem", "kcal": 420, "link": cookidoo_search("Kakaový závin")},
-            {"nazev": "Srnčí hřbet s čokoládou", "kcal": 430, "link": cookidoo_search("Srnčí hřbet")},
-            {"nazev": "Bábovka s ořechy a kakaem", "kcal": 410, "link": cookidoo_search("Bábovka ořechy")},
-            {"nazev": "Makový závin", "kcal": 430, "link": cookidoo_search("Makový závin")},
-            {"nazev": "Tvarohový koláč s mechem", "kcal": 400, "link": cookidoo_search("Tvarohový koláč")},
-            {"nazev": "Rýžový nákyp s meruňkami", "kcal": 420, "link": cookidoo_search("Rýžový nákyp meruňky")},
-            {"nazev": "Krupicový nákyp s třešněmi", "kcal": 390, "link": cookidoo_search("Krupicový nákyp")},
-            {"nazev": "Švestkový koláč s drobenkou", "kcal": 380, "link": cookidoo_search("Švestkový koláč")},
-            {"nazev": "Mramorová bábovka", "kcal": 400, "link": cookidoo_search("Mramorová bábovka")},
-            {"nazev": "Hrnková bábovka", "kcal": 390, "link": cookidoo_search("Hrnková bábovka")},
-            {"nazev": "Tvarohové šátečky", "kcal": 410, "link": cookidoo_search("Tvarohové šátečky")},
-            {"nazev": "Jablečný štrúdl z listového těsta", "kcal": 380, "link": cookidoo_search("Jablečný štrúdl")},
-            {"nazev": "Pudinkové šneky z kynutého těsta", "kcal": 430, "link": cookidoo_search("Pudinkové šneky")},
-            {"nazev": "Koblížky plněné marmeládou", "kcal": 440, "link": cookidoo_search("Koblížky")},
-            {"nazev": "Bavorské vdolky s povidly a tvarohem", "kcal": 460, "link": cookidoo_search("Bavorské vdolky")},
-            {"nazev": "Loupáčky s vanilkovým krémem", "kcal": 390, "link": cookidoo_search("Loupáčky vanilka")},
-            {"nazev": "Tvarohové šneky s rozinkami", "kcal": 410, "link": cookidoo_search("Tvarohové šneky")},
-            {"nazev": "Borůvkové kynuté knedlíky", "kcal": 450, "link": cookidoo_search("Kynuté knedlíky borůvky")},
-            {"nazev": "Jahodové kynuté knedlíky s sypaným tvarohem", "kcal": 440, "link": cookidoo_search("Kynuté knedlíky jahody")},
-            {"nazev": "Meruňkové knedlíky z odpalovaného těsta", "kcal": 420, "link": cookidoo_search("Meruňkové knedlíky")},
-            {"nazev": "Švestkové knedlíky s makovou posypkou", "kcal": 430, "link": cookidoo_search("Švestkové knedlíky mak")},
-            {"nazev": "Bramborové knedlíky plněné uzeným masem", "kcal": 480, "link": cookidoo_search("Knedlíky uzené maso")},
-            {"nazev": "Chlebové placky Naan", "kcal": 360, "link": cookidoo_search("Naan chléb")},
-            {"nazev": "Domácí pita chléb", "kcal": 310, "link": cookidoo_search("Pita chléb")},
-            {"nazev": "Focaccia s rozmarýnem a solí", "kcal": 380, "link": cookidoo_search("Focaccia")},
-            {"nazev": "Kornspitz s máslem a sýrem", "kcal": 340, "link": cookidoo_search("Kornspitz")},
-            {"nazev": "Domácí bageta s bylinkovým máslem", "kcal": 360, "link": cookidoo_search("Bylinková bageta")}
-        ],
-        "Svačina 1": [
-            {"nazev": "Kozí jogurt", "kcal": 150, "link": "https://cookidoo.cz/recipes/recipe/cs/r539669"},
-            {"nazev": "Kokosový jogurt (veganský)", "kcal": 190, "link": "https://cookidoo.cz/recipes/recipe/cs/r539672"},
-            {"nazev": "Jahodovo-jogurtové smoothie s chia", "kcal": 210, "link": "https://cookidoo.cz/recipes/recipe/cs/r177507"},
-            {"nazev": "Banánové smoothie s arašídy", "kcal": 368, "link": "https://cookidoo.cz/recipes/recipe/cs/r122391"},
-            {"nazev": "Banánovo-čokoládové muffiny", "kcal": 280, "link": "https://cookidoo.cz/recipes/recipe/cs/r812011"},
-            {"nazev": "Muffiny s čokoládovými kousky", "kcal": 270, "link": "https://cookidoo.cz/recipes/recipe/cs/r54988"},
-            {"nazev": "Jablečné pyré s piškoty", "kcal": 180, "link": cookidoo_search("Jablečné pyré")},
-            {"nazev": "Mrkvový salát s jablkem a citrónem", "kcal": 140, "link": cookidoo_search("Mrkvový salát s jablkem")},
-            {"nazev": "Tvarohový krém s malinami", "kcal": 210, "link": cookidoo_search("Tvarohový krém maliny")},
-            {"nazev": "Pečená jablka s ořechy a rozinkami", "kcal": 220, "link": cookidoo_search("Pečená jablka ořechy")},
-            {"nazev": "Ovocný salát s mátou a medem", "kcal": 160, "link": cookidoo_search("Ovocný salát mátou")},
-            {"nazev": "Chia pudink s mangovým pyré", "kcal": 230, "link": cookidoo_search("Chia pudink mango")},
-            {"nazev": "Banánový chlebíček s ořechy", "kcal": 280, "link": cookidoo_search("Banánový chlebíček")},
-            {"nazev": "Kefírové smoothie s borůvkami", "kcal": 190, "link": cookidoo_search("Kefírové smoothie borůvky")},
-            {"nazev": "Jogurtová pěna s jahodami", "kcal": 200, "link": cookidoo_search("Jogurtová pěna jahody")},
-            {"nazev": "Kefírová buchta s drobenkou", "kcal": 260, "link": cookidoo_search("Kefírová buchta")},
-            {"nazev": "Pečená hruška s tvarohem a skořicí", "kcal": 210, "link": cookidoo_search("Pečená hruška tvaroh")},
-            {"nazev": "Rýžový pudink s vanilkou", "kcal": 250, "link": cookidoo_search("Rýžový pudink vanilka")},
-            {"nazev": "Ovesné sušenky s čokoládou", "kcal": 230, "link": cookidoo_search("Ovesné sušenky čokoláda")},
-            {"nazev": "Malinový sorbet", "kcal": 140, "link": cookidoo_search("Malinový sorbet")},
-            {"nazev": "Jahodový koktejl s mlékem", "kcal": 190, "link": cookidoo_search("Jahodový koktejl mléko")},
-            {"nazev": "Avokádové smoothie s špenátem a jablkem", "kcal": 220, "link": cookidoo_search("Green smoothie")},
-            {"nazev": "Pudink s piškoty a banánem", "kcal": 240, "link": cookidoo_search("Pudink piškoty banán")},
-            {"nazev": "Rebarborový koláč s drobenkou", "kcal": 270, "link": cookidoo_search("Rebarborový koláč")},
-            {"nazev": "Jablečné lívanečky", "kcal": 280, "link": cookidoo_search("Jablečné lívanečky")},
-            {"nazev": "Meruňkový rozvar s tvarohovým krémem", "kcal": 210, "link": cookidoo_search("Meruňkový rozvar")},
-            {"nazev": "Borůvkový koláč z kynutého těsta", "kcal": 290, "link": cookidoo_search("Borůvkový koláč")},
-            {"nazev": "Domácí jablečný kompot", "kcal": 150, "link": cookidoo_search("Jablečný kompot")},
-            {"nazev": "Sušené křížaly s ořechy", "kcal": 180, "link": cookidoo_search("Křížaly ořechy")},
-            {"nazev": "Pečené kaštany", "kcal": 210, "link": cookidoo_search("Pečené kaštany")},
-            {"nazev": "Mrkvové muffiny s ořechy", "kcal": 260, "link": cookidoo_search("Mrkvové muffiny")},
-            {"nazev": "Cuketový perník", "kcal": 250, "link": cookidoo_search("Cuketový perník")},
-            {"nazev": "Tvarohový pohár s borůvkami", "kcal": 220, "link": cookidoo_search("Tvarohový pohár borůvky")},
-            {"nazev": "Rybízový koláč s sněhem", "kcal": 270, "link": cookidoo_search("Rybízový koláč sníh")},
-            {"nazev": "Citronové sušenky", "kcal": 230, "link": cookidoo_search("Citronové sušenky")},
-            {"nazev": "Kokosky", "kcal": 210, "link": cookidoo_search("Kokosky")},
-            {"nazev": "Sněhové pusinky", "kcal": 160, "link": cookidoo_search("Sněhové pusinky")},
-            {"nazev": "Jahodová pěna", "kcal": 170, "link": cookidoo_search("Jahodová pěna")},
-            {"nazev": "Pomerančové smoothie s mrkví", "kcal": 180, "link": cookidoo_search("Pomerančové smoothie mrkev")},
-            {"nazev": "Ovocný špíz s jogurtovým dipem", "kcal": 160, "link": cookidoo_search("Ovocný špíz jogurt")},
-            {"nazev": "Pohankové sušenky s brusinkami", "kcal": 220, "link": cookidoo_search("Pohankové sušenky")},
-            {"nazev": "Datlové kuličky s kokosem", "kcal": 240, "link": cookidoo_search("Datlové kuličky")},
-            {"nazev": "Energetické tyčinky se semínky", "kcal": 260, "link": cookidoo_search("Energetické tyčinky")},
-            {"nazev": "Pečený grahamový toast s medem", "kcal": 210, "link": cookidoo_search("Grahamový toast med")},
-            {"nazev": "Jablečné chipsy", "kcal": 130, "link": cookidoo_search("Jablečné chipsy")},
-            {"nazev": "Hruškové pyré s vanilkou", "kcal": 170, "link": cookidoo_search("Hruškové pyré")},
-            {"nazev": "Švestkový rozvar s perníkovým kořením", "kcal": 190, "link": cookidoo_search("Švestkový rozvar")},
-            {"nazev": "Tvarohový mls s kakaem", "kcal": 220, "link": cookidoo_search("Tvarohový mls")},
-            {"nazev": "Mražený jogurt s ovocem", "kcal": 180, "link": cookidoo_search("Mražený jogurt")},
-            {"nazev": "Ovocná zmrzlina z mraženého banánu (Nicecream)", "kcal": 190, "link": cookidoo_search("Nicecream")},
-            {"nazev": "Citrónová sorbet s mátou", "kcal": 130, "link": cookidoo_search("Citrónový sorbet")},
-            {"nazev": "Mangové smoothie s kokosovým mlékem", "kcal": 210, "link": cookidoo_search("Mangové smoothie")},
-            {"nazev": "Ananasové smoothie s mátou", "kcal": 180, "link": cookidoo_search("Ananasové smoothie")},
-            {"nazev": "Vínový salát s ořechy a sýrem", "kcal": 240, "link": cookidoo_search("Vínový salát ořechy")},
-            {"nazev": "Melounový salát s fetou a mátou", "kcal": 190, "link": cookidoo_search("Melounový salát feta")},
-            {"nazev": "Grepové smoothie s medem", "kcal": 160, "link": cookidoo_search("Grepové smoothie")},
-            {"nazev": "Okurkové smoothie s jablkem", "kcal": 140, "link": cookidoo_search("Okurkové smoothie")},
-            {"nazev": "Rajčatové smoothie s bazalkou", "kcal": 130, "link": cookidoo_search("Rajčatové smoothie")},
-            {"nazev": "Dýňové pyré se skořicí", "kcal": 160, "link": cookidoo_search("Dýňové pyré skořice")},
-            {"nazev": "Celerové hranolky z horkovzdušné fritézy", "kcal": 180, "link": cookidoo_search("Celerové hranolky")},
-            {"nazev": "Mrkvové hranolky s bylinkovým dipem", "kcal": 190, "link": cookidoo_search("Mrkvové hranolky")},
-            {"nazev": "Cuketové chipsy", "kcal": 140, "link": cookidoo_search("Cuketové chipsy")},
-            {"nazev": "Pečená cizrna na slano", "kcal": 210, "link": cookidoo_search("Pečená cizrna")},
-            {"nazev": "Mandle pražené v medu a soli", "kcal": 270, "link": cookidoo_search("Pražené mandle med")},
-            {"nazev": "Vlašské ořechy v karamelu", "kcal": 280, "link": cookidoo_search("Ořechy karamel")},
-            {"nazev": "Dýňová semínka pražená na pánvi", "kcal": 220, "link": cookidoo_search("Pražená dýňová semínka")},
-            {"nazev": "Slunečnicová semínka s tamari omáčkou", "kcal": 210, "link": cookidoo_search("Slunečnicová semínka tamari")},
-            {"nazev": "Popcorn na másle", "kcal": 230, "link": cookidoo_search("Popcorn máslo")},
-            {"nazev": "Rýžové chlebíčky s avokádem", "kcal": 200, "link": cookidoo_search("Rýžové chlebíčky avokádo")},
-            {"nazev": "Knäckebrot s lučinou a pažitkou", "kcal": 180, "link": cookidoo_search("Knäckebrot lučina")},
-            {"nazev": "Celozrnný toast s arašídovým máslem", "kcal": 260, "link": cookidoo_search("Toast arašídové máslo")},
-            {"nazev": "Rice cakes s marmeládou", "kcal": 170, "link": cookidoo_search("Rice cakes marmeláda")},
-            {"nazev": "Tvarohový koláč s meruňkami", "kcal": 260, "link": cookidoo_search("Tvarohový koláč meruňky")},
-            {"nazev": "Makový závin s povidly", "kcal": 280, "link": cookidoo_search("Makový závin povidla")},
-            {"nazev": "Orechový závin", "kcal": 290, "link": cookidoo_search("Ořechový závin")},
-            {"nazev": "Tvarohové šátečky s meruňkou", "kcal": 270, "link": cookidoo_search("Tvarohové šátečky meruňka")},
-            {"nazev": "Pudinkový koláč s broskvemi", "kcal": 260, "link": cookidoo_search("Pudinkový koláč broskve")},
-            {"nazev": "Perníkové kuličky", "kcal": 240, "link": cookidoo_search("Perníkové kuličky")},
-            {"nazev": "Linecké koláčky s marmeládou", "kcal": 250, "link": cookidoo_search("Linecké koláčky")},
-            {"nazev": "Vanilkové rohlíčky", "kcal": 230, "link": cookidoo_search("Vanilkové rohlíčky")},
-            {"nazev": "Pracny s ořechy", "kcal": 240, "link": cookidoo_search("Pracny")},
-            {"nazev": "Marokánky s čokoládou", "kcal": 270, "link": cookidoo_search("Marokánky")},
-            {"nazev": "Nepečené kuličky z ovesných vloček", "kcal": 220, "link": cookidoo_search("Nepečené kuličky vločky")},
-            {"nazev": "Tvarohové kuličky v kokosu", "kcal": 210, "link": cookidoo_search("Tvarohové kuličky kokos")},
-            {"nazev": "Ovocné želé s čerstvým ovocem", "kcal": 150, "link": cookidoo_search("Ovocné želé")},
-            {"nazev": "Panna cotta s malinovým přelivem", "kcal": 260, "link": cookidoo_search("Panna cotta maliny")},
-            {"nazev": "Crème brûlée", "kcal": 290, "link": cookidoo_search("Creme brulee")},
-            {"nazev": "Mousse au chocolat", "kcal": 280, "link": cookidoo_search("Mousse au chocolat")},
-            {"nazev": "Tiramisu do skleničky", "kcal": 290, "link": cookidoo_search("Tiramisu sklenička")},
-            {"nazev": "Kávový krém s šlehačkou", "kcal": 230, "link": cookidoo_search("Kávový krém")},
-            {"nazev": "Ledová káva se zmrzlinou", "kcal": 240, "link": cookidoo_search("Ledová káva zmrzlina")},
-            {"nazev": "Horká čokoláda se severskými kořením", "kcal": 270, "link": cookidoo_search("Horká čokoláda")},
-            {"nazev": "Chai latte s medem", "kcal": 210, "link": cookidoo_search("Chai latte")},
-            {"nazev": "Matcha latte s ovesným mlékem", "kcal": 180, "link": cookidoo_search("Matcha latte")},
-            {"nazev": "Domácí limonáda z citrónu a máty", "kcal": 120, "link": cookidoo_search("Domácí limonáda mátová")},
-            {"nazev": "Bezinková limonáda", "kcal": 130, "link": cookidoo_search("Bezinková limonáda")},
-            {"nazev": "Jahodová limonáda s bazalkou", "kcal": 140, "link": cookidoo_search("Jahodová limonáda")},
-            {"nazev": "Okurková limonáda", "kcal": 110, "link": cookidoo_search("Okurková limonáda")},
-            {"nazev": "Ingwer shot (Zázvorový shot)", "kcal": 90, "link": cookidoo_search("Zázvorový shot")},
-            {"nazev": "Rakytníkový čaj s medem", "kcal": 120, "link": cookidoo_search("Rakytníkový čaj")},
-            {"nazev": "Šípkový čaj s citrónem", "kcal": 100, "link": cookidoo_search("Šípkový čaj")},
-            {"nazev": "Pečený čaj z lesního ovoce", "kcal": 160, "link": cookidoo_search("Pečený čaj")},
-            {"nazev": "Bylinkový čaj z čerstvé máty a meduky", "kcal": 80, "link": cookidoo_search("Bylinkový čaj")},
-            {"nazev": "Citrónová voda s chia semínky", "kcal": 90, "link": cookidoo_search("Citrónová voda chia")},
-            {"nazev": "Kokosová voda s limetkou", "kcal": 100, "link": cookidoo_search("Kokosová voda")},
-            {"nazev": "Kombucha s příchutí maliny", "kcal": 110, "link": cookidoo_search("Kombucha")},
-            {"nazev": "Vodní kefír s citronem", "kcal": 100, "link": cookidoo_search("Vodní kefír")}
-        ],
-        "Oběd": [
-            {"nazev": "Drůbeží guláš s knedlíkem", "kcal": 620, "link": "https://cookidoo.cz/recipes/recipe/cs/r58189"},
-            {"nazev": "Bramborový guláš", "kcal": 351, "link": "https://cookidoo.cz/recipes/recipe/cs/r365840"},
-            {"nazev": "Guláš z vepřové panenky", "kcal": 640, "link": "https://cookidoo.cz/recipes/recipe/cs/r710014"},
-            {"nazev": "Guláš se středozemní zeleninou", "kcal": 480, "link": "https://cookidoo.cz/recipes/recipe/cs/r134669"},
-            {"nazev": "Zabijačkový guláš s knedlíkem", "kcal": 700, "link": "https://cookidoo.cz/recipes/recipe/cs/r73546"},
-            {"nazev": "Čočkový guláš se slaninou a chorizem", "kcal": 590, "link": "https://cookidoo.cz/recipes/recipe/cs/r134781"},
-            {"nazev": "Hovězí guláš s houskovým knedlíkem", "kcal": 710, "link": "https://cookidoo.cz/recipes/recipe/cs/r134686"},
-            {"nazev": "Kari kuře se žampióny a basmati rýží", "kcal": 610, "link": "https://cookidoo.cz/recipes/recipe/cs/r91869"},
-            {"nazev": "Marocké kuřecí maso s kuskusem", "kcal": 580, "link": "https://cookidoo.cz/recipes/recipe/cs/r771394"},
-            {"nazev": "Kuřecí kousky s mandlemi a rýží", "kcal": 560, "link": "https://cookidoo.cz/recipes/recipe/cs/r67383"},
-            {"nazev": "Trhané kuřecí maso v tortille", "kcal": 630, "link": "https://cookidoo.cz/recipes/recipe/cs/r236960"},
-            {"nazev": "Kuřecí kousky s paprikami a rýží", "kcal": 540, "link": "https://cookidoo.cz/recipes/recipe/cs/r496504"},
-            {"nazev": "Kuřecí ragú se špenátovou rýží", "kcal": 570, "link": "https://cookidoo.cz/recipes/recipe/cs/r115310"},
-            {"nazev": "Kuře po asijsku s rýží", "kcal": 600, "link": "https://cookidoo.cz/recipes/recipe/cs/r113021"},
-            {"nazev": "Losos en crôute s citrónovým rizotem", "kcal": 763, "link": "https://cookidoo.cz/recipes/recipe/cs/r132025"},
-            {"nazev": "Lososové rizoto s fenyklem", "kcal": 618, "link": "https://cookidoo.cz/recipes/recipe/cs/r132020"},
-            {"nazev": "Rizoto s dýní a uzeným lososem", "kcal": 430, "link": "https://cookidoo.cz/recipes/recipe/cs/r152804"},
-            {"nazev": "Losos se špenátem a divokou rýží", "kcal": 590, "link": "https://cookidoo.cz/recipes/recipe/cs/r67379"},
-            {"nazev": "Zámecké rizoto", "kcal": 550, "link": "https://cookidoo.cz/recipes/recipe/cs/r139563"},
-            {"nazev": "Pivní rizoto s houbami", "kcal": 520, "link": "https://cookidoo.cz/recipes/recipe/cs/r151751"},
-            {"nazev": "Svíčková na smetaně s houskovým knedlíkem", "kcal": 750, "link": cookidoo_search("Svíčková na smetaně")},
-            {"nazev": "Špagety Carbonara", "kcal": 680, "link": cookidoo_search("Špagety Carbonara")},
-            {"nazev": "Boloňské těstoviny", "kcal": 670, "link": cookidoo_search("Boloňské těstoviny")},
-            {"nazev": "Chilli con carne s ryží", "kcal": 650, "link": cookidoo_search("Chilli con carne")},
-            {"nazev": "Čočkový dhal s kokosovým mlékem", "kcal": 520, "link": cookidoo_search("Čočkový dhal")},
-            {"nazev": "Gnocchi se špenátem a kuřecím masem", "kcal": 630, "link": cookidoo_search("Gnocchi špenát kuřecí")},
-            {"nazev": "Hovězí Stroganoff s rýží", "kcal": 720, "link": cookidoo_search("Hovězí Stroganoff")},
-            {"nazev": "Vepřová panenka s dýňovým pyré", "kcal": 610, "link": cookidoo_search("Vepřová panenka dýňové pyré")},
-            {"nazev": "Plněné papriky v rajčatové omáčce", "kcal": 630, "link": cookidoo_search("Plněné papriky rajčatová omáčka")},
-            {"nazev": "Kuřecí prsa s brokolicí a bramborovou kaší", "kcal": 580, "link": cookidoo_search("Kuřecí prsa bramborová kaše")},
-            {"nazev": "Vepřový výpečky se zelím a bramborovým knedlíkem", "kcal": 780, "link": cookidoo_search("Vepřové výpečky zelí")},
-            {"nazev": "Pečené kuře na másle s rýží", "kcal": 620, "link": cookidoo_search("Pečené kuře rýže")},
-            {"nazev": "Sekaná pečeně s bramborovým salátem", "kcal": 710, "link": cookidoo_search("Sekaná bramborový salát")},
-            {"nazev": "Rybí filé na másle s vařeným bramborem", "kcal": 510, "link": cookidoo_search("Rybí filé vařený brambor")},
-            {"nazev": "Kroketky z mletého masa s kaší", "kcal": 640, "link": cookidoo_search("Mleté maso kaše")},
-            {"nazev": "Slaný koláč Quiche Lorraine", "kcal": 630, "link": cookidoo_search("Quiche Lorraine")},
-            {"nazev": "Lasagne s mletým masem", "kcal": 720, "link": cookidoo_search("Lasagne mleté maso")},
-            {"nazev": "Zapékané těstoviny se uzeným masem", "kcal": 660, "link": cookidoo_search("Zapékané těstoviny uzené")},
-            {"nazev": "Francouzské brambory se šunkou", "kcal": 640, "link": cookidoo_search("Francouzské brambory")},
-            {"nazev": "Smažený řízek s bramborovou kaší", "kcal": 730, "link": cookidoo_search("Smažený řízek kaše")},
-            {"nazev": "Kuřecí Cordon Bleu s opékanými brambory", "kcal": 710, "link": cookidoo_search("Cordon Bleu brambory")},
-            {"nazev": "Vepřový plátek na kmíně s rýží", "kcal": 590, "link": cookidoo_search("Vepřový plátek kmín")},
-            {"nazev": "Hovězí na česneku s bramborovým knedlíkem", "kcal": 690, "link": cookidoo_search("Hovězí na česneku")},
-            {"nazev": "Křenová omáčka s hovězím masem a knedlíkem", "kcal": 720, "link": cookidoo_search("Křenová omáčka hovězí")},
-            {"nazev": "Koprová omáčka s vařeným vejcem a bramborem", "kcal": 580, "link": cookidoo_search("Koprová omáčka vejce")},
-            {"nazev": "Rajčatová omáčka s hovězím masem a těstovinami", "kcal": 650, "link": cookidoo_search("Rajčatová omáčka hovězí")},
-            {"nazev": "Španělský ptáček s rýží", "kcal": 710, "link": cookidoo_search("Španělský ptáček")},
-            {"nazev": "Znojemská hovězí pečeně s rýží", "kcal": 670, "link": cookidoo_search("Znojemská pečeně")},
-            {"nazev": "Segedínský guláš s houskovým knedlíkem", "kcal": 730, "link": cookidoo_search("Segedínský guláš")},
-            {"nazev": "Vepřové ragú se zeleninou a těstovinami", "kcal": 620, "link": cookidoo_search("Vepřové ragú")},
-            {"nazev": "Kuře na paprice s těstovinami", "kcal": 640, "link": cookidoo_search("Kuře na paprice")},
-            {"nazev": "Hovězí plátky na žampiónech s rýží", "kcal": 660, "link": cookidoo_search("Hovězí žampióny rýže")},
-            {"nazev": "Pečená kachna se červeným zelím a knedlíkem", "kcal": 820, "link": cookidoo_search("Pečená kachna zelí")},
-            {"nazev": "Smažený sýr s hranolkami a tatarkou", "kcal": 780, "link": cookidoo_search("Smažený sýr hranolky")},
-            {"nazev": "Smažené žampióny s vařeným bramborem", "kcal": 580, "link": cookidoo_search("Smažené žampióny")},
-            {"nazev": "Houbový kubík s kroupami", "kcal": 510, "link": cookidoo_search("Houbový kubík")},
-            {"nazev": "Tvarohové knedlíky plněné uzeným masem", "kcal": 640, "link": cookidoo_search("Tvarohové knedlíky uzené")},
-            {"nazev": "Bramborové taštičky plněné povidly", "kcal": 520, "link": cookidoo_search("Bramborové taštičky povidla")},
-            {"nazev": "Dukátové buchtičky s vanilkovým krémem", "kcal": 590, "link": cookidoo_search("Dukátové buchtičky")},
-            {"nazev": "Šišky s makem", "kcal": 540, "link": cookidoo_search("Šišky s mákem")},
-            {"nazev": "Cizrnové kari s basmati rýží", "kcal": 530, "link": cookidoo_search("Cizrnové kari")},
-            {"nazev": "Tofu na medu a sójové omáčce s rýží", "kcal": 490, "link": cookidoo_search("Tofu med sójová omáčka")},
-            {"nazev": "Veganská svíčková s houskovým knedlíkem", "kcal": 560, "link": cookidoo_search("Veganská svíčková")},
-            {"nazev": "Griilovaný hermelín s brusinkami a chlebem", "kcal": 610, "link": cookidoo_search("Grilovaný hermelín brusinky")},
-            {"nazev": "Pečený pstruh na kmíně s vařeným bramborem", "kcal": 520, "link": cookidoo_search("Pečený pstruh kmín")},
-            {"nazev": "Kapr na černo s bramborovým salátem", "kcal": 650, "link": cookidoo_search("Kapr na černo")},
-            {"nazev": "Mořský ďas na páře s zeleninou Varoma", "kcal": 480, "link": cookidoo_search("Mořský ďas Varoma")},
-            {"nazev": "Krevety na česneku s bílým vínem a bagetou", "kcal": 510, "link": cookidoo_search("Krevety česnek víno")},
-            {"nazev": "Paella s mořskými plody", "kcal": 620, "link": cookidoo_search("Paella mořské plody")},
-            {"nazev": "Rizoto s mořskými plody", "kcal": 580, "link": cookidoo_search("Rizoto mořské plody")},
-            {"nazev": "Těstoviny s krevetami a rajčaty", "kcal": 570, "link": cookidoo_search("Těstoviny krevety rajčata")},
-            {"nazev": "Gnocchi s gorgonzolou a vlašskými ořechy", "kcal": 680, "link": cookidoo_search("Gnocchi gorgonzola")},
-            {"nazev": "Těstoviny Pesto Genovese", "kcal": 590, "link": cookidoo_search("Těstoviny Pesto Genovese")},
-            {"nazev": "Špagety AOP (Aglio Olio e Peperoncino)", "kcal": 540, "link": cookidoo_search("Špagety Aglio Olio")},
-            {"nazev": "Penne Arrabbiata", "kcal": 510, "link": cookidoo_search("Penne Arrabbiata")},
-            {"nazev": "Těstoviny s lososem a smetanou", "kcal": 640, "link": cookidoo_search("Těstoviny losos smetana")},
-            {"nazev": "Tortellini plněné masem v rajčatové omáčce", "kcal": 620, "link": cookidoo_search("Tortellini mleté maso")},
-            {"nazev": "Ravioli plněné špenátem a ricottou", "kcal": 550, "link": cookidoo_search("Ravioli špenát ricotta")},
-            {"nazev": "Květákový eidam na plech", "kcal": 490, "link": cookidoo_search("Květák na plech")},
-            {"nazev": "Brokolicový nákyp se sýrem", "kcal": 480, "link": cookidoo_search("Brokolicový nákyp")},
-            {"nazev": "Cuketové lasagne bez těstovin", "kcal": 450, "link": cookidoo_search("Cuketové lasagne")},
-            {"nazev": "Zapékaný lilek s rajčaty a mozzarellou (Parmigiana)", "kcal": 510, "link": cookidoo_search("Parmigiana lilek")},
-            {"nazev": "Ratatouille s rozmarýnovou foccaciou", "kcal": 460, "link": cookidoo_search("Ratatouille")},
-            {"nazev": "Cibulový koláč (Zwiebelkuchen)", "kcal": 580, "link": cookidoo_search("Cibulový koláč")},
-            {"nazev": "Empanadas plněné hovězím masem", "kcal": 630, "link": cookidoo_search("Empanadas hovězí")},
-            {"nazev": "Tacos s trhaným vepřovým masem (Carnitas)", "kcal": 650, "link": cookidoo_search("Tacos Carnitas")},
-            {"nazev": "Burrito s kuřecím masem a fazolemi", "kcal": 670, "link": cookidoo_search("Burrito kuřecí")},
-            {"nazev": "Enchiladas s hovězím masem a sýrem", "kcal": 690, "link": cookidoo_search("Enchiladas hovězí")},
-            {"nazev": "Quesadilla s mletým masem a jalapeños", "kcal": 640, "link": cookidoo_search("Quesadilla mleté maso")},
-            {"nazev": "Gyros v pita chlebu s tzatziki", "kcal": 620, "link": cookidoo_search("Gyros pita tzatziki")},
-            {"nazev": "Souvlaki z kuřecího masa s řeckým salátem", "kcal": 570, "link": cookidoo_search("Souvlaki kuřecí")},
-            {"nazev": "Musaka s mletým masem a lilkem", "kcal": 680, "link": cookidoo_search("Musaka mleté maso")},
-            {"nazev": "Falafel v pita chlebu s tahini dresinkem", "kcal": 530, "link": cookidoo_search("Falafel pita tahini")},
-            {"nazev": "Butter Chicken s rýží Basmati", "kcal": 670, "link": cookidoo_search("Butter Chicken")},
-            {"nazev": "Chicken Tikka Masala s chlebem Naan", "kcal": 680, "link": cookidoo_search("Tikka Masala")},
-            {"nazev": "Vepřové Vindaloo s rýží", "kcal": 690, "link": cookidoo_search("Vepřové Vindaloo")},
-            {"nazev": "Palak Paneer s indickým chlebem", "kcal": 560, "link": cookidoo_search("Palak Paneer")},
-            {"nazev": "Hovězí Pho Bo", "kcal": 490, "link": cookidoo_search("Pho Bo")},
-            {"nazev": "Pad Thai s krevetami a arašídy", "kcal": 610, "link": cookidoo_search("Pad Thai krevety")},
-            {"nazev": "Ramen polévka s vepřovým bůčkem a vejcem", "kcal": 650, "link": cookidoo_search("Ramen vepřový")},
-            {"nazev": "Červené thajské kari s kuřecím masem", "kcal": 620, "link": cookidoo_search("Červené thajské kari")},
-            {"nazev": "Zelené thajské kari s zeleninou a tofu", "kcal": 540, "link": cookidoo_search("Zelené thajské kari")},
-            {"nazev": "Sushi maki rolády s lososem a avokádem", "kcal": 480, "link": cookidoo_search("Sushi maki losos")},
-            {"nazev": "Poke bowl s tuňákem a edamame", "kcal": 520, "link": cookidoo_search("Poke bowl tuňák")},
-            {"nazev": "Kung Pao s kuřecím masem a arašídy", "kcal": 630, "link": cookidoo_search("Kung Pao kuřecí")},
-            {"nazev": "Sladkokyselé kuře s ananasem a rýží", "kcal": 610, "link": cookidoo_search("Sladkokyselé kuře")},
-            {"nazev": "Hovězí na česneku a zázvoru po čínsku", "kcal": 640, "link": cookidoo_search("Hovězí po čínsku")},
-            {"nazev": "Smažené rýžové nudle s kuřecím masem", "kcal": 590, "link": cookidoo_search("Smažené rýžové nudle")},
-            {"nazev": "Bramboráčky s uzeným masem a kysaným zelím", "kcal": 670, "link": cookidoo_search("Bramboráčky uzené maso")},
-            {"nazev": "Cuketové placky s feta sýrem", "kcal": 460, "link": cookidoo_search("Cuketové placky feta")}
-        ],
-        "Svačina 2": [
-            {"nazev": "Česnekovo sýrová pomazánka", "kcal": 250, "link": "https://cookidoo.cz/recipes/recipe/cs/r52644"},
-            {"nazev": "Liptovská pomazánka", "kcal": 230, "link": "https://cookidoo.cz/recipes/recipe/cs/r69983"},
-            {"nazev": "Pomazánka s čedarem a česnekem", "kcal": 260, "link": "https://cookidoo.cz/recipes/recipe/cs/r152535"},
-            {"nazev": "Pomazánka z makrely", "kcal": 240, "link": "https://cookidoo.cz/recipes/recipe/cs/r70166"},
-            {"nazev": "Pomazánka z rybiček v tomatě", "kcal": 220, "link": "https://cookidoo.cz/recipes/recipe/cs/r52556"},
-            {"nazev": "Avokádová pomazánka", "kcal": 210, "link": "https://cookidoo.cz/recipes/recipe/cs/r773884"},
-            {"nazev": "Pomazánka z čabajky", "kcal": 260, "link": "https://cookidoo.cz/recipes/recipe/cs/r67018"},
-            {"nazev": "Vaječná pomazánka s cibulí", "kcal": 220, "link": "https://cookidoo.cz/recipes/recipe/cs/r69969"},
-            {"nazev": "Cizrnová pomazánka (Hummus)", "kcal": 230, "link": "https://cookidoo.cz/recipes/recipe/cs/r87099"},
-            {"nazev": "Tvarohová pomazánka s pažitkou a ředkvičkami", "kcal": 190, "link": cookidoo_search("Tvarohová pomazánka pažitka")},
-            {"nazev": "Guacamole s mrkvovými hranolky", "kcal": 240, "link": cookidoo_search("Guacamole mrkev")},
-            {"nazev": "Celerový salát s vlašskými ořechy", "kcal": 210, "link": cookidoo_search("Celerový salát ořechy")},
-            {"nazev": "Řecký jogurt s medem a ořechy", "kcal": 220, "link": cookidoo_search("Řecký jogurt med")},
-            {"nazev": "Křenová pomazánka se šunkou", "kcal": 230, "link": cookidoo_search("Křenová pomazánka šunka")},
-            {"nazev": "Pomazánka z červené řepy s tvarohem", "kcal": 190, "link": cookidoo_search("Pomazánka z červené řepy")},
-            {"nazev": "Salát Coleslaw", "kcal": 180, "link": cookidoo_search("Salát Coleslaw")},
-            {"nazev": "Třená niva s vlašskými ořechy a pečivem", "kcal": 270, "link": cookidoo_search("Třená niva ořechy")},
-            {"nazev": "Hermelínová pomazánka", "kcal": 260, "link": cookidoo_search("Hermelínová pomazánka")},
-            {"nazev": "Krabí pomazánka s jogurtem", "kcal": 210, "link": cookidoo_search("Krabí pomazánka")},
-            {"nazev": "Kvasnicová pomazánka na topince", "kcal": 200, "link": cookidoo_search("Kvasnicová pomazánka")},
-            {"nazev": "Škvarková pomazánka s jarní cibulkou", "kcal": 290, "link": cookidoo_search("Škvarková pomazánka")},
-            {"nazev": "Mrkvová pomazánka s žervé", "kcal": 180, "link": cookidoo_search("Mrkvová pomazánka žervé")},
-            {"nazev": "Drožďová pomazánka s vejcem", "kcal": 210, "link": cookidoo_search("Drožďová pomazánka")},
-            {"nazev": "Rybičková pomazánka s tvarohem", "kcal": 200, "link": cookidoo_search("Rybičková pomazánka tvaroh")},
-            {"nazev": "Budapešťská pomazánka", "kcal": 220, "link": cookidoo_search("Budapešťská pomazánka")},
-            {"nazev": "Cuketová pomazánka na topinku", "kcal": 170, "link": cookidoo_search("Cuketová pomazánka")},
-            {"nazev": "Lutenice (Bulharská zeleninová pomazánka)", "kcal": 180, "link": cookidoo_search("Lutenice")},
-            {"nazev": "Ajvar s Balkánským sýrem a pitas", "kcal": 230, "link": cookidoo_search("Ajvar balkánský sýr")},
-            {"nazev": "Liptovská pomazánka s bryndzou", "kcal": 240, "link": cookidoo_search("Liptovská pomazánka bryndza")},
-            {"nazev": "Pomazánka z pečeného česneku", "kcal": 210, "link": cookidoo_search("Pomazánka z pečeného česneku")},
-            {"nazev": "Kapeková pomazánka", "kcal": 220, "link": cookidoo_search("Kapeková pomazánka")},
-            {"nazev": "Tuňáková pomazánka s vejcem", "kcal": 230, "link": cookidoo_search("Tuňáková pomazánka vejce")},
-            {"nazev": "Sardinková pomazánka s citrónem", "kcal": 210, "link": cookidoo_search("Sardinková pomazánka")},
-            {"nazev": "Lososová pomazánka s koprovo-lučinovým základem", "kcal": 250, "link": cookidoo_search("Lososová pomazánka kopr")},
-            {"nazev": "Šunková pěna s okurkou", "kcal": 220, "link": cookidoo_search("Šunková pěna okurka")},
-            {"nazev": "Sýrová pomazánka s česnekem a ořechy", "kcal": 270, "link": cookidoo_search("Sýrová pomazánka česnek")},
-            {"nazev": "Pomazánka z uzeného tofu", "kcal": 200, "link": cookidoo_search("Pomazánka uzené tofu")},
-            {"nazev": "Cizrnový hummus s pečenou paprikou", "kcal": 220, "link": cookidoo_search("Hummus pečená paprika")},
-            {"nazev": "Cizrnový hummus s röte řepou", "kcal": 210, "link": cookidoo_search("Hummus červená řepa")},
-            {"nazev": "Bramborová pomazánka s kyselou okurkou", "kcal": 200, "link": cookidoo_search("Bramborová pomazánka")},
-            {"nazev": "Houska s máslem, šunkou a sýrem", "kcal": 310, "link": cookidoo_search("Houska šunka sýr")},
-            {"nazev": "Chléb s Lučinou a pažítkou", "kcal": 220, "link": cookidoo_search("Chléb Lučina pažitka")},
-            {"nazev": "Caprese špízy s bazalkovým pestem", "kcal": 240, "link": cookidoo_search("Caprese špízy")},
-            {"nazev": "Gervais pomazánka s pažitkou", "kcal": 190, "link": cookidoo_search("Gervais pažitka")},
-            {"nazev": "Nivová pomazánka s jablkem", "kcal": 250, "link": cookidoo_search("Nivová pomazánka jablko")},
-            {"nazev": "Hermelínový salát s majonézou", "kcal": 290, "link": cookidoo_search("Hermelínový salát")},
-            {"nazev": "Pochoutkový salát s pečivem", "kcal": 310, "link": cookidoo_search("Pochoutkový salát")},
-            {"nazev": "Vlašský salát s rohlíkem", "kcal": 320, "link": cookidoo_search("Vlašský salát rohlík")},
-            {"nazev": "Šopský salát s balkánským sýrem", "kcal": 220, "link": cookidoo_search("Šopský salát")},
-            {"nazev": "Řecký salát s olivami a fetou", "kcal": 250, "link": cookidoo_search("Řecký salát feta")},
-            {"nazev": "Cézár salát s kuřecím masem a krutony", "kcal": 340, "link": cookidoo_search("Cézár salát kuřecí")},
-            {"nazev": "Těstovinový salát s zeleninou a majonézou", "kcal": 310, "link": cookidoo_search("Těstovinový salát zelenina")},
-            {"nazev": "Kus-kus salát s sušenými rajčaty", "kcal": 260, "link": cookidoo_search("Kuskus salát sušená rajčata")},
-            {"nazev": "Bulgurový salát Tabbouleh", "kcal": 230, "link": cookidoo_search("Tabbouleh")},
-            {"nazev": "Quinoa salát s avokádem a granátovým jablkem", "kcal": 270, "link": cookidoo_search("Quinoa salát avokádo")},
-            {"nazev": "Čočkový salát s kyselou okurkou a vejcem", "kcal": 280, "link": cookidoo_search("Čočkový salát okurka")},
-            {"nazev": "Fazolový salát s cibulkou a tuňákem", "kcal": 290, "link": cookidoo_search("Fazolový salát tuňák")},
-            {"nazev": "Cizrnový salát s rajčaty a petrželkou", "kcal": 240, "link": cookidoo_search("Cizrnový salát rajčata")},
-            {"nazev": "Mrkvový salát s ananasem", "kcal": 160, "link": cookidoo_search("Mrkvový salát ananas")},
-            {"nazev": "Celerový salát s ananasem a majonézou", "kcal": 230, "link": cookidoo_search("Celerový salát ananas")},
-            {"nazev": "Zelný salát s křenem", "kcal": 150, "link": cookidoo_search("Zelný salát křen")},
-            {"nazev": "Okurkový salát s zálivkou", "kcal": 90, "link": cookidoo_search("Okurkový salát zálivka")},
-            {"nazev": "Rajčatový salát s cibulkou", "kcal": 110, "link": cookidoo_search("Rajčatový salát cibulka")},
-            {"nazev": "Bramborový salát s majonézou", "kcal": 320, "link": cookidoo_search("Bramborový salát majonéza")},
-            {"nazev": "Vídeňský bramborový salát s octem", "kcal": 220, "link": cookidoo_search("Vídeňský bramborový salát")},
-            {"nazev": "Cuketové carpaccio s parmazánem", "kcal": 180, "link": cookidoo_search("Cuketové carpaccio")},
-            {"nazev": "Hovězí carpaccio s rukolou a parmazánem", "kcal": 260, "link": cookidoo_search("Hovězí carpaccio rukola")},
-            {"nazev": "Tatarák z lososa s toastem", "kcal": 290, "link": cookidoo_search("Tatarák z lososa")},
-            {"nazev": "Tatarák z hovězí svíčkové s topinkami", "kcal": 340, "link": cookidoo_search("Tatarák hovězí svíčková")},
-            {"nazev": "Tatarák z lilku na topinku", "kcal": 210, "link": cookidoo_search("Tatarák z lilku")},
-            {"nazev": "Plněná vejce s kaviárem", "kcal": 230, "link": cookidoo_search("Plněná vejce kaviár")},
-            {"nazev": "Plněná vejce s šunkovou pěnou", "kcal": 220, "link": cookidoo_search("Plněná vejce šunková pěna")},
-            {"nazev": "Plněná vejce s žloutkovou pěnou a majonézou", "kcal": 240, "link": cookidoo_search("Plněná vejce žloutky")},
-            {"nazev": "Šunkové rolky s křenem a šlehačkou", "kcal": 250, "link": cookidoo_search("Šunkové rolky křen")},
-            {"nazev": "Sýrové roládky s česnekovou náplní", "kcal": 270, "link": cookidoo_search("Sýrová roláda česnek")},
-            {"nazev": "Mozzarella s rajčaty a pesto dresinkem", "kcal": 260, "link": cookidoo_search("Mozzarella rajčata pesto")},
-            {"nazev": "Zapečené bruschetty s rajčaty a bazalkou", "kcal": 230, "link": cookidoo_search("Bruschetta rajčata")},
-            {"nazev": "Crostini s játrovou paštikou", "kcal": 280, "link": cookidoo_search("Crostini paštika")},
-            {"nazev": "Domácí játrová paštika s mandlemi", "kcal": 310, "link": cookidoo_search("Domácí játrová paštika")},
-            {"nazev": "Paštika z kachních jater na koňaku", "kcal": 330, "link": cookidoo_search("Paštika kachní játra")},
-            {"nazev": "Vegetariánská paštika z ořechů a hub", "kcal": 250, "link": cookidoo_search("Vegetariánská paštika ořechy")},
-            {"nazev": "Pečený camembert s brusinkovým džemem", "kcal": 320, "link": cookidoo_search("Pečený camembert brusinky")},
-            {"nazev": "Nakládaný hermelín s divokým kořením", "kcal": 340, "link": cookidoo_search("Nakládaný hermelín")},
-            {"nazev": "Utopenci s cibulkou a feferonkou", "kcal": 310, "link": cookidoo_search("Utopenci cibule")},
-            {"nazev": "Tlačenka s cibulkou a octem", "kcal": 290, "link": cookidoo_search("Tlačenka cibule ocet")},
-            {"nazev": "Smažené jalapeños plněné sýrem", "kcal": 280, "link": cookidoo_search("Jalapeños sýr")},
-            {"nazev": "Smažené cibulové kroužky s dipem", "kcal": 260, "link": cookidoo_search("Cibulové kroužky")},
-            {"nazev": "Mozzarellové tyčinky smažené", "kcal": 300, "link": cookidoo_search("Mozzarellové tyčinky")},
-            {"nazev": "Nachos se sýrovou omáčkou a salsa dresinkem", "kcal": 330, "link": cookidoo_search("Nachos sýrová omáčka")},
-            {"nazev": "Tortilla chips s guacamole dipem", "kcal": 290, "link": cookidoo_search("Tortilla chips guacamole")},
-            {"nazev": "Pečené bramborové slupky s slaninou a cheddarem", "kcal": 310, "link": cookidoo_search("Bramborové slupky slanina")},
-            {"nazev": "Bramborové lupínky domácí z trouby", "kcal": 220, "link": cookidoo_search("Domácí bramborové lupínky")},
-            {"nazev": "Grilovaný kukuřičný klas s máslem", "kcal": 210, "link": cookidoo_search("Kukuřičný klas máslo")},
-            {"nazev": "Edamame lusky na parozákladě s mořskou solí", "kcal": 160, "link": cookidoo_search("Edamame mořská sůl")},
-            {"nazev": "Pečené kaštany s máslem", "kcal": 220, "link": cookidoo_search("Pečené kaštany máslo")},
-            {"nazev": "Slanné tyčinky z kynutého těsta", "kcal": 240, "link": cookidoo_search("Slané tyčinky")},
-            {"nazev": "Sýrové pečivo z lístkového těsta", "kcal": 270, "link": cookidoo_search("Sýrové pečivo listové")},
-            {"nazev": "Šneky z listového těsta se šunkou a sýrem", "kcal": 290, "link": cookidoo_search("Šneky listové těsto šunka")},
-            {"nazev": "Pizza štandard mini roládky", "kcal": 280, "link": cookidoo_search("Pizza roládky")},
-            {"nazev": "Mini párečky v županu", "kcal": 310, "link": cookidoo_search("Párky v županu")},
-            {"nazev": "Slané muffins se slaninou a sýrem", "kcal": 270, "link": cookidoo_search("Slané muffiny slanina")},
-            {"nazev": "Opečený toast se sýrem a rajčetem", "kcal": 280, "link": cookidoo_search("Toast sýr rajče")},
-            {"nazev": "Panini s prosciuttem a mozzarellou", "kcal": 340, "link": cookidoo_search("Panini prosciutto mozzarella")},
-            {"nazev": "Bageta s tuňákovým salátem", "kcal": 330, "link": cookidoo_search("Bageta tuňákový salát")},
-            {"nazev": "Wrap s grilovaným kuřecím masem a zeleninou", "kcal": 350, "link": cookidoo_search("Wrap kuřecí maso")},
-            {"nazev": "Klubový sendvič (Club Sandwich) s hranolkami", "kcal": 410, "link": cookidoo_search("Club Sandwich")},
-            {"nazev": "Chléb s sádlem a cibulkou", "kcal": 320, "link": cookidoo_search("Chléb sádlo cibule")}
-        ],
-        "Večeře": [
-            {"nazev": "Polévka Tom Yum", "kcal": 250, "link": "https://cookidoo.cz/recipes/recipe/cs/r150774"},
-            {"nazev": "Cizrnová polévka se špenátem", "kcal": 320, "link": "https://cookidoo.cz/recipes/recipe/cs/r616374"},
-            {"nazev": "Polévka z červených paprik a cuket", "kcal": 300, "link": "https://cookidoo.cz/recipes/recipe/cs/r120817"},
-            {"nazev": "Chřestová polévka s rukolou", "kcal": 290, "link": "https://cookidoo.cz/recipes/recipe/cs/r337674"},
-            {"nazev": "Celerová polévka se smetanou", "kcal": 310, "link": "https://cookidoo.cz/recipes/recipe/cs/r98089"},
-            {"nazev": "Polévka z dýně s kokosovým mlékem", "kcal": 340, "link": "https://cookidoo.cz/recipes/recipe/cs/r659068"},
-            {"nazev": "Čočková polévka", "kcal": 380, "link": "https://cookidoo.cz/recipes/recipe/cs/r52548"},
-            {"nazev": "Hrstková polévka", "kcal": 350, "link": "https://cookidoo.cz/recipes/recipe/cs/r759531"},
-            {"nazev": "Špenátové rizoto", "kcal": 460, "link": "https://cookidoo.cz/recipes/recipe/cs/r139574"},
-            {"nazev": "Rizoto s paprikami a tuňákem", "kcal": 470, "link": "https://cookidoo.cz/recipes/recipe/cs/r139565"},
-            {"nazev": "Kuřecí nudličky v rajčatové šťávě", "kcal": 420, "link": "https://cookidoo.cz/recipes/recipe/cs/r69975"},
-            {"nazev": "Kuřecí se zeleninou v teriyaki omáčce", "kcal": 450, "link": "https://cookidoo.cz/recipes/recipe/cs/r302491"},
-            {"nazev": "Losos v balíčku s kuskusem", "kcal": 430, "link": "https://cookidoo.cz/recipes/recipe/cs/r132024"},
-            {"nazev": "Minestrone polévka zeleninová", "kcal": 380, "link": cookidoo_search("Minestrone polévka")},
-            {"nazev": "Frittata se zeleninou a sýrem", "kcal": 410, "link": cookidoo_search("Frittata se zeleninou")},
-            {"nazev": "Hrachová polévka s opékaným párkem", "kcal": 410, "link": cookidoo_search("Hrachová polévka párek")},
-            {"nazev": "Fazolová polévka s klobásou", "kcal": 430, "link": cookidoo_search("Fazolová polévka klobása")},
-            {"nazev": "Bramborová polévka s houbami (Bramboračka)", "kcal": 360, "link": cookidoo_search("Bramboračka houby")},
-            {"nazev": "Frankfurtská polévka s párkem", "kcal": 390, "link": cookidoo_search("Frankfurtská polévka")},
-            {"nazev": "Kulajda s zastřeným vejcem a koprem", "kcal": 420, "link": cookidoo_search("Kulajda vejce kopr")},
-            {"nazev": "Zelňačka s uzeným masem a klobásou", "kcal": 450, "link": cookidoo_search("Zelňačka uzené maso")},
-            {"nazev": "Dýňový krém se smaženými semínky", "kcal": 320, "link": cookidoo_search("Dýňový krém semínka")},
-            {"nazev": "Brokolicový krém s krutony", "kcal": 310, "link": cookidoo_search("Brokolicový krém krutony")},
-            {"nazev": "Květáková polévka s muškátovým oříškem", "kcal": 290, "link": cookidoo_search("Květáková polévka")},
-            {"nazev": "Tomatová polévka s bazalkou a parmazánem", "kcal": 330, "link": cookidoo_search("Tomatová polévka bazalka")},
-            {"nazev": "Česneková polévka se sýrem a krutony (Česnečka)", "kcal": 350, "link": cookidoo_search("Česnečka sýr krutony")},
-            {"nazev": "Hovězí vývar s játrovými knedlíčky a nudlemi", "kcal": 310, "link": cookidoo_search("Hovězí vývar játrové knedlíčky")},
-            {"nazev": "Kuřecí vývar s kapáním a zeleninou", "kcal": 280, "link": cookidoo_search("Kuřecí vývar zelenina")},
-            {"nazev": "Rybí polévka vánoční", "kcal": 340, "link": cookidoo_search("Rybí polévka")},
-            {"nazev": "Gulašová polévka v chlebu", "kcal": 480, "link": cookidoo_search("Gulášová polévka chléb")},
-            {"nazev": "Boršč s hovězím masem a zakysanou smetanou", "kcal": 420, "link": cookidoo_search("Boršč hovězí maso")},
-            {"nazev": "Cuketový krém se sýrem", "kcal": 300, "link": cookidoo_search("Cuketový krém sýr")},
-            {"nazev": "Špenátová polévka s opékaným breadcrumb", "kcal": 310, "link": cookidoo_search("Špenátová polévka")},
-            {"nazev": "Pórková polévka s bramborem", "kcal": 320, "link": cookidoo_search("Pórková polévka brambor")},
-            {"nazev": "Mrkvový krém se zázvorem", "kcal": 280, "link": cookidoo_search("Mrkvový krém zázvor")},
-            {"nazev": "Batátový krém s chilli", "kcal": 330, "link": cookidoo_search("Batátový krém chilli")},
-            {"nazev": "Houbový krém ze žampiónů", "kcal": 340, "link": cookidoo_search("Houbový krém žampióny")},
-            {"nazev": "Cibulová polévka se zapékanou sýrovou bagetkou", "kcal": 390, "link": cookidoo_search("Francouzská cibulačka")},
-            {"nazev": "Krkonošské kyselo s houbami", "kcal": 380, "link": cookidoo_search("Krkonošské kyselo")},
-            {"nazev": "Valašská kyselica", "kcal": 430, "link": cookidoo_search("Valašská kyselica")},
-            {"nazev": "Demikát (Bryndzová polévka)", "kcal": 370, "link": cookidoo_search("Demikát")},
-            {"nazev": "Gazpacho studená rajčatová polévka", "kcal": 220, "link": cookidoo_search("Gazpacho")},
-            {"nazev": "Tarhoňová polévka se zeleninou", "kcal": 330, "link": cookidoo_search("Tarhoňová polévka")},
-            {"nazev": "Biftek z hovězí svíčkové s hranolkami", "kcal": 580, "link": cookidoo_search("Biftek hovězí svíčková")},
-            {"nazev": "Tatarák z lososa s pečeným toastem", "kcal": 410, "link": cookidoo_search("Tatarák losos toast")},
-            {"nazev": "Pečený camembert v alobalu s brusinkami", "kcal": 450, "link": cookidoo_search("Pečený camembert alobal")},
-            {"nazev": "Cuketové placky s feta sýrem a česnekovým dipem", "kcal": 420, "link": cookidoo_search("Cuketové placky feta dip")},
-            {"nazev": "Bramboráčky se špenátem a uzeným lososem", "kcal": 480, "link": cookidoo_search("Bramboráčky uzený losos")},
-            {"nazev": "Květákový eidam zapékaný na plech", "kcal": 430, "link": cookidoo_search("Květák eidam plech")},
-            {"nazev": "Zapékaná brokolice s těstovinami a sýrem", "kcal": 490, "link": cookidoo_search("Zapékaná brokolice těstoviny")},
-            {"nazev": "Zapékané dýňové plátky s rajčaty a mozzarellou", "kcal": 410, "link": cookidoo_search("Zapékaná dýně mozzarella")},
-            {"nazev": "Lilek zapékaný s mletým masem", "kcal": 520, "link": cookidoo_search("Zapékaný lilek mleté maso")},
-            {"nazev": "Cukety plněné směsí z mletého masa a sýra", "kcal": 490, "link": cookidoo_search("Plněná cuketa mleté maso")},
-            {"nazev": "Pečená červená řepa s kozím sýrem a ořechy", "kcal": 430, "link": cookidoo_search("Pečená červená řepa kozí sýr")},
-            {"nazev": "Grilovaná zelenina s haloumi sýrem", "kcal": 460, "link": cookidoo_search("Grilovaná zelenina halloumi")},
-            {"nazev": "Salát s teplým kozím sýrem a medem", "kcal": 410, "link": cookidoo_search("Salát kozí sýr med")},
-            {"nazev": "Těstovinový salát s tuňákem a vejcem", "kcal": 480, "link": cookidoo_search("Těstovinový salát tuňák vejce")},
-            {"nazev": "Kus-kus salát s feta sýrem a olivy", "kcal": 430, "link": cookidoo_search("Kuskus salát feta olivy")},
-            {"nazev": "Bulgurové rizoto s houbami", "kcal": 420, "link": cookidoo_search("Bulgurové rizoto houby")},
-            {"nazev": "Pohankové rizoto se zeleninou", "kcal": 390, "link": cookidoo_search("Pohankové rizoto zelenina")},
-            {"nazev": "Jáhlové rizoto s dýní", "kcal": 400, "link": cookidoo_search("Jáhlové rizoto dýně")},
-            {"nazev": "Špenátové gnocchi s gorgonzolou", "kcal": 510, "link": cookidoo_search("Špenátové gnocchi gorgonzola")},
-            {"nazev": "Tvarohové noky se špenátovou omáčkou", "kcal": 450, "link": cookidoo_search("Tvarohové noky špenát")},
-            {"nazev": "Bramborové noky s makem na sladko", "kcal": 480, "link": cookidoo_search("Bramborové noky mák")},
-            {"nazev": "Penne se sušenými rajčaty a rukolou", "kcal": 470, "link": cookidoo_search("Penne sušená rajčata rukola")},
-            {"nazev": "Špagety s pestem z medvědího česneku", "kcal": 460, "link": cookidoo_search("Špagety pesto medvědí česnek")},
-            {"nazev": "Tagliatelle s lososem a citrónovou omáčkou", "kcal": 530, "link": cookidoo_search("Tagliatelle losos citrón")},
-            {"nazev": "Zapékané gnocchi s rajčaty a mozzarellou", "kcal": 490, "link": cookidoo_search("Zapékané gnocchi mozzarella")},
-            {"nazev": "Rizoto s červenou řepou a kozím sýrem", "kcal": 460, "link": cookidoo_search("Rizoto červená řepa kozí sýr")},
-            {"nazev": "Dýňové rizoto s parmazánovými chipsy", "kcal": 450, "link": cookidoo_search("Dýňové rizoto parmazán")},
-            {"nazev": "Šafránové rizoto Milanese", "kcal": 480, "link": cookidoo_search("Rizoto Milanese")},
-            {"nazev": "Cuketové rizoto s citrónem a krevetami", "kcal": 470, "link": cookidoo_search("Cuketové rizoto krevety")},
-            {"nazev": "Houbový Stroganoff s rýží", "kcal": 490, "link": cookidoo_search("Houbový Stroganoff rýže")},
-            {"nazev": "Sójové nudličky na zelenině s nudlemi", "kcal": 420, "link": cookidoo_search("Sójové nudličky zelenina")},
-            {"nazev": "Tofu se špenátem a bramborem", "kcal": 390, "link": cookidoo_search("Tofu špenát brambor")},
-            {"nazev": "Cizrnové placičky s bylinkovým dresinkem", "kcal": 430, "link": cookidoo_search("Cizrnové placičky")},
-            {"nazev": "Čočkové karbanátky s bramborovou kaší", "kcal": 460, "link": cookidoo_search("Čočkové karbanátky kaše")},
-            {"nazev": "Fazolové karbanátky v housce (Veggie Burger)", "kcal": 490, "link": cookidoo_search("Veggie Burger fazole")},
-            {"nazev": "Smažené zeleninové řízečky s kaší", "kcal": 470, "link": cookidoo_search("Zeleninové řízečky kaše")},
-            {"nazev": "Květákový mozek s vařeným bramborem", "kcal": 380, "link": cookidoo_search("Květákový mozek brambor")},
-            {"nazev": "Cuketový nákyp se sýrem a uzeninou", "kcal": 460, "link": cookidoo_search("Cuketový nákyp uzenina")},
-            {"nazev": "Zapékané brambory s brokolicí a smetanou", "kcal": 480, "link": cookidoo_search("Zapékané brambory brokolice")},
-            {"nazev": "Bramborové placky se špenátem", "kcal": 420, "link": cookidoo_search("Bramborové placky špenát")},
-            {"nazev": "Slané palačinky se šunkou a sýrem", "kcal": 460, "link": cookidoo_search("Slané palačinky šunka sýr")},
-            {"nazev": "Zapečená tortila s kuřecím masem a sýrem", "kcal": 510, "link": cookidoo_search("Zapečená tortilla kuřecí")},
-            {"nazev": "Quesadilla se špenátem a mozarellou", "kcal": 440, "link": cookidoo_search("Quesadilla špenát mozzarella")},
-            {"nazev": "Plněná pita kapsa se zeleninou a feta sýrem", "kcal": 410, "link": cookidoo_search("Pita kapsa feta")},
-            {"nazev": "Slaný koláč s rajčaty a bazalkou", "kcal": 430, "link": cookidoo_search("Slaný koláč rajčata bazalka")},
-            {"nazev": "Galetka s jablky a tvarohem na sladko", "kcal": 420, "link": cookidoo_search("Galetka jablka tvaroh")},
-            {"nazev": "Špenátový závin z listového těsta se sýrem", "kcal": 450, "link": cookidoo_search("Špenátový závin listové těsto")},
-            {"nazev": "Lososový závin s ricottou a špenátem", "kcal": 490, "link": cookidoo_search("Lososový závin ricotta")},
-            {"nazev": "Krabí tyčinky v těstíčku s bramborovou kaší", "kcal": 440, "link": cookidoo_search("Krabí tyčinky kaše")},
-            {"nazev": "Zapékané rybí filé na rajčatech", "kcal": 410, "link": cookidoo_search("Zapékané rybí filé rajčata")},
-            {"nazev": "Kapr na načerno s knedlíkem", "kcal": 520, "link": cookidoo_search("Kapr na černo knedlík")},
-            {"nazev": "Pstruh na másle a bylinkách s bramborem", "kcal": 460, "link": cookidoo_search("Pstruh na másle brambor")},
-            {"nazev": "Slávky na bílém víně s hranolkami", "kcal": 480, "link": cookidoo_search("Slávky na bílém víně")},
-            {"nazev": "Calamari smažené kroužky s česnekovým dipem", "kcal": 470, "link": cookidoo_search("Calamari kroužky dip")},
-            {"nazev": "Špíz z mořských plodů s ryží", "kcal": 450, "link": cookidoo_search("Špíz mořské plody")},
-            {"nazev": "Kuřecí špíz se zeleninou a hranolkami", "kcal": 520, "link": cookidoo_search("Kuřecí špíz hranolky")},
-            {"nazev": "Vepřový špíz s cibulkou a klobásou", "kcal": 560, "link": cookidoo_search("Vepřový špíz klobása")},
-            {"nazev": "Mleté řízečky se sýrem a vařeným bramborem", "kcal": 530, "link": cookidoo_search("Mleté řízečky sýr")},
-            {"nazev": "Čevabčiči s cibulí, hořčicí a bramborem", "kcal": 540, "link": cookidoo_search("Čevabčiči brambor")},
-            {"nazev": "Holandský řízek se sýrem a bramborovou kaší", "kcal": 580, "link": cookidoo_search("Holandský řízek kaše")},
-            {"nazev": "Kuřecí nuggets z trouby s hranolkami", "kcal": 490, "link": cookidoo_search("Kuřecí nuggets hranolky")},
-            {"nazev": "Fish and Chips s tatarskou omáčkou", "kcal": 560, "link": cookidoo_search("Fish and Chips")},
-            {"nazev": "Smažené krevety v tempuře s sladkokyselou omáčkou", "kcal": 480, "link": cookidoo_search("Krevety v tempuře")},
-            {"nazev": "Spring rolls (Jarní závitky) s omáčkou", "kcal": 420, "link": cookidoo_search("Jarní závitky")},
-            {"nazev": "Dim Sum knedlíčky plněné vepřovým masem na páře", "kcal": 440, "link": cookidoo_search("Dim Sum knedlíčky")},
-            {"nazev": "Bao buns plněné bůčkem a zeleninou", "kcal": 510, "link": cookidoo_search("Bao buns bůček")},
-            {"nazev": "Won Ton polévka s taštičkami", "kcal": 360, "link": cookidoo_search("Won Ton polévka")},
-            {"nazev": "Slepé kuře (zapékané brambory s kuřetem)", "kcal": 520, "link": cookidoo_search("Slepé kuře brambory")},
-            {"nazev": "Kus-kus s pečenou zeleninou a cizrnou", "kcal": 410, "link": cookidoo_search("Kuskus pečená zelenina")},
-            {"nazev": "Slaný závin s kysaným zelím a uzeným", "kcal": 470, "link": cookidoo_search("Závin kysané zelí uzené")},
-            {"nazev": "Slané muffiny se špenátem a ricottou", "kcal": 380, "link": cookidoo_search("Slané muffiny špenát")},
-            {"nazev": "Cuketové mini pizzy", "kcal": 360, "link": cookidoo_search("Cuketové mini pizzy")}
-        ]
-    }
+// SVAČINY 
+{ id: "sv1", cat: "svacina", name: "Jahodovo-jogurtové smoothie s chia semínky", kcal: 87, icon: "🍓", url: "https://cookidoo.cz/recipes/recipe/cs/r177507" }, 
+{ id: "sv2", cat: "svacina", name: "Kokosový jogurt (veganský)", kcal: 190, icon: "🥥", url: "https://cookidoo.cz/recipes/recipe/cs/r539672" }, 
+{ id: "sv3", cat: "svacina", name: "Studená okurková polévka s bílým jogurtem a avokádem", kcal: 191, icon: "🥒", url: "https://cookidoo.cz/recipes/recipe/cs/r177503" }, 
+{ id: "sv4", cat: "svacina", name: "Veganská pěna s banány a avokádem", kcal: 267, icon: "🍌", url: "https://cookidoo.cz/recipes/recipe/cs/r761186" }, 
+{ id: "sv5", cat: "svacina", name: "Domácí jogurt zalitý horkým ovocem", kcal: 191, icon: "🫐", url: "https://cookidoo.cz/recipes/recipe/cs/r122393" }, 
+{ id: "sv6", cat: "svacina", name: "Bramborová kaše (malá porce)", kcal: 200, icon: "🥔", url: "https://cookidoo.cz/recipes/recipe/cs/r770148" }, 
+];
 
-# 1. Načtení databáze
-if "recepty_db" not in st.session_state:
-    st.session_state.recepty_db = nacti_realnou_databazi()
+const ACTIVITY = { 
+zadna: { label: "Žádná aktivita", desc: "sedavé zaměstnání, minimum pohybu", factor: 1.2, icon: "🛋️" }, 
+mirna: { label: "Mírná aktivita", desc: "lehký pohyb / sport 1–3× týdně", factor: 1.375, icon: "🚶" }, 
+velka: { label: "Velká aktivita", desc: "sport 4–6× týdně / fyzická práce", factor: 1.55, icon: "🏃" }, 
+};
 
-# 2. Postranní panel - Výpočet BMR a TDEE
-st.sidebar.header("⚙️ Vaše parametry")
+const PLAN_3 = [ 
+{ key: "snidane", cat: "snidane", label: "Snídaně", icon: "🌅", share: 0.3 }, 
+{ key: "obed", cat: "obed", label: "Oběd", icon: "☀️", share: 0.4 }, 
+{ key: "vecere", cat: "vecere", label: "Večeře", icon: "🌙", share: 0.3 }, 
+];
 
-pohlavi = st.sidebar.selectbox("Pohlaví", ["Žena", "Muž"])
-vek = st.sidebar.number_input("Věk", min_value=15, max_value=100, value=30)
-vaha = st.sidebar.number_input("Váha (kg)", min_value=40.0, max_value=200.0, value=65.0)
-vyska = st.sidebar.number_input("Výška (cm)", min_value=130, max_value=220, value=170)
+const PLAN_5 = [ 
+{ key: "snidane", cat: "snidane", label: "Snídaně", icon: "🌅", share: 0.25 }, 
+{ key: "sv1", cat: "svacina", label: "Dopolední svačina", icon: "🍎", share: 0.1 }, 
+{ key: "obed", cat: "obed", label: "Oběd", icon: "☀️", share: 0.35 }, 
+{ key: "sv2", cat: "svacina", label: "Odpolední svačina", icon: "🥨", share: 0.1 }, 
+{ key: "vecere", cat: "vecere", label: "Večeře", icon: "🌙", share: 0.2 }, 
+];
 
-aktivity_dict = {
-    "Sedavé zaměstnání (minimální pohyb)": 1.2,
-    "Lehká aktivita (1-3x týdně cvičení)": 1.375,
-    "Střední aktivita (3-5x týdně cvičení)": 1.55,
-    "Vysoká aktivita (6-7x týdně náročný sport)": 1.725
+function toNum(v, fallback) { 
+const n = parseFloat(v); 
+return Number.isFinite(n) ? n : fallback; 
 }
 
-aktivita = st.sidebar.selectbox("Úroveň aktivity", list(aktivity_dict.keys()))
-pocet_jidel = st.sidebar.radio("Počet jídel denně", [3, 5], index=0)
+function bmr({ gender, age, weight, height }) { 
+const base = 10 * toNum(weight, 0) + 6.25 * toNum(height, 0) - 5 * toNum(age, 0); 
+return gender = "muz" ? base + 5 : base - 161; 
+}
 
-if pohlavi == "Muž":
-    bmr = 10 * vaha + 6.25 * vyska - 5 * vek + 5
-else:
-    bmr = 10 * vaha + 6.25 * vyska - 5 * vek - 161
+function pickThree(cat, target, usedIds) { 
+const pool = RECIPES.filter((r) => r.cat = cat); 
+const sorted = [...pool].sort( 
+(a, b) => Math.abs(a.kcal - target) - Math.abs(b.kcal - target) 
+); 
+const fresh = sorted.filter((r) => !usedIds.has(r.id)); 
+const ordered = [...fresh, ...sorted.filter((r) => usedIds.has(r.id))]; 
+const chosen = ordered.slice(0, 3); 
+chosen.forEach((r) => usedIds.add(r.id)); 
+return chosen; 
+}
 
-tdee = round(bmr * aktivity_dict[aktivita])
+function portionNote(recipeKcal, target) { 
+const ratio = target / recipeKcal; 
+const rounded = Math.round(ratio * 4) / 4; 
+const clamped = Math.min(2, Math.max(0.5, rounded)); 
+return clamped = 1 ? "odpovídá 1 porci" : doporučená porce ${clamped}×; 
+}
 
-st.sidebar.markdown("---")
-st.sidebar.metric("Váš denní cílový příjem", f"{tdee} kcal")
+/* Číselné pole, které nezobrazuje nulu na začátku a dovolí 
+pole dočasně smazat, aniž by tam blikla 0 / 
+function NumberField({ label, value, onChange, min, max, suffix }) { 
+return ( 
+<div className="field"> 
+<label className="label">{label}</label> 
+<div className="numWrap"> 
+<input 
+type="text" 
+inputMode="numeric" 
+pattern="[0-9]" 
+value={value} 
+min={min} 
+max={max} 
+onChange={(e) => { 
+const raw = e.target.value.replace(/[^\d]/g, ""); 
+const stripped = raw.replace(/^0+(?=\d)/, ""); 
+onChange(stripped); 
+}} 
+onBlur={(e) => { 
+if (e.target.value = "") onChange(String(min)); 
+}} 
+className="input" 
+/> 
+{suffix && <span className="suffix">{suffix}</span>} 
+</div> 
+</div> 
+); 
+}
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("📊 Databáze receptů")
-for kat, recepty in st.session_state.recepty_db.items():
-    st.sidebar.text(f"{kat}: {len(recepty)} receptů")
+export default function App() { 
+const [form, setForm] = useState({ 
+gender: "zena", 
+age: "30", 
+weight: "65", 
+height: "168", 
+activity: "mirna", 
+mealsPerDay: 3, 
+}); 
+const [selections, setSelections] = useState({}); 
+const [showPlan, setShowPlan] = useState(false);
 
-# 3. Formulář pro přikládání vlastních receptů
-st.sidebar.markdown("---")
-with st.sidebar.expander("➕ Přidat vlastní recept z Cookidoo"):
-    novy_kat = st.selectbox("Kategorie", ["Snídaně", "Svačina 1", "Oběd", "Svačina 2", "Večeře"])
-    novy_nazev = st.text_input("Přesný název receptu z Cookidoo")
-    nove_kcal = st.number_input("Kalorie (kcal)", min_value=50, max_value=2000, value=400)
-    novy_link_vstup = st.text_input("Přímá URL (volitelné)")
-
-    if st.button("Uložit recept"):
-        if novy_nazev:
-            finalni_link = novy_link_vstup.strip() if novy_link_vstup.strip() else cookidoo_search(novy_nazev)
-            st.session_state.recepty_db[novy_kat].append({
-                "nazev": novy_nazev.strip(),
-                "kcal": nove_kcal,
-                "link": finalni_link
-            })
-            st.success(f"Recept **{novy_nazev}** byl úspěšně přidán!")
-            st.rerun()
-        else:
-            st.warning("Vyplňte prosím název jídla.")
-
-# 4. Generování celého týdne bez opakování
-dny_v_tydnu = ["Pondělí", "Úterý", "Středa", "Čtvrtek", "Pátek", "Sobota", "Neděle"]
-chody_dne = ["Snídaně", "Oběd", "Večeře"] if pocet_jidel == 3 else ["Snídaně", "Svačina 1", "Oběd", "Svačina 2", "Večeře"]
-
-if st.button("🎲 Vygenerovat nový týdenní plán") or "tydenni_plan" not in st.session_state:
-    st.session_state.tydenni_plan = {}
-    
-    vybrane_recepty_pro_chod = {}
-    for chod in ["Snídaně", "Svačina 1", "Oběd", "Svačina 2", "Večeře"]:
-        db = st.session_state.recepty_db[chod]
-        potrebny_pocet = 7 * 3  # 21 unikátních jídel
-        vybrane_recepty_pro_chod[chod] = random.sample(db, potrebny_pocet)
-
-    for i_den, den in enumerate(dny_v_tydnu):
-        st.session_state.tydenni_plan[den] = {}
-        for chod in chody_dne:
-            start_idx = i_den * 3
-            st.session_state.tydenni_plan[den][chod] = vybrane_recepty_pro_chod[chod][start_idx:start_idx + 3]
-
-# 5. Hlavní zobrazení jídelníčku
-st.subheader("📅 Váš jídelníček na tento týden")
-
-zalozky = st.tabs(dny_v_tydnu)
-
-for idx, tab in enumerate(zalozky):
-    den_nazev = dny_v_tydnu[idx]
-    with tab:
-        st.write(f"#### Plán na {den_nazev}")
-        for chod in chody_dne:
-            st.write(f"### {chod}")
-            moznosti = st.session_state.tydenni_plan[den_nazev][chod]
-            
-            cols = st.columns(3)
-            for i, recept in enumerate(moznosti):
-                with cols[i]:
-                    st.info(f"**{recept['nazev']}**\n\n🔥 ~{recept['kcal']} kcal\n\n[📖 Otevřít recept na Cookidoo]({recept['link']})")
+const results = useMemo(() => { 
+const base = bmr(form); 
+const t
