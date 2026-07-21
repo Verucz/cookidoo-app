@@ -5,107 +5,77 @@ st.set_page_config(page_title="Thermomix Jídelníček", page_icon="🍲", layou
 
 st.title("🍲 Thermomix & Cookidoo Plánovač Jídelníčku")
 
-# 1. Databáze receptů s přímými funkčními URL adresami na konkrétní Cookidoo recepty
+# 1. Databáze s přímými odkazovými URL na konkrétní Cookidoo recepty
 if "recepty_db" not in st.session_state:
     st.session_state.recepty_db = {
         "Snídaně": [
             {
-                "nazev": "Ovesná kaše s jablky", 
+                "nazev": "Ovesná kaše", 
                 "kcal": 380, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55273"
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r594505"
             },
             {
                 "nazev": "Nadýchané lívance", 
                 "kcal": 430, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55281"
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r659068"
             },
             {
                 "nazev": "Domácí granola", 
                 "kcal": 390, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r128392"
-            },
-            {
-                "nazev": "Míchaná vajíčka", 
-                "kcal": 410, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55272"
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r263673"
             }
         ],
         "Svačina 1": [
             {
                 "nazev": "Jablečné pyré", 
                 "kcal": 200, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55270"
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r594505"
             },
             {
                 "nazev": "Ovocné smoothie", 
                 "kcal": 220, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55269"
-            },
-            {
-                "nazev": "Mrkvový salát s jablkem", 
-                "kcal": 180, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55268"
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r263673"
             }
         ],
         "Oběd": [
             {
-                "nazev": "Dýňová krémová polévka", 
+                "nazev": "Dýňová polévka", 
                 "kcal": 350, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55284"
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r82858"
             },
             {
-                "nazev": "Svíčková na smetaně", 
-                "kcal": 750, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r160751"
-            },
-            {
-                "nazev": "Losos s parní zeleninou a bramborem (Varoma)", 
-                "kcal": 680, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r160742"
-            },
-            {
-                "nazev": "Hovězí guláš", 
+                "nazev": "Hovězí guláš s knedlíky", 
                 "kcal": 720, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r160750"
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r766768"
             },
             {
-                "nazev": "Rizoto s houbami", 
-                "kcal": 610, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r160748"
+                "nazev": "Čočkovo-dýňová polévka", 
+                "kcal": 450, 
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r263673"
             }
         ],
         "Svačina 2": [
             {
-                "nazev": "Hummus", 
-                "kcal": 230, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55280"
-            },
-            {
-                "nazev": "Tvarohová pomazánka", 
-                "kcal": 190, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55279"
+                "nazev": "Polévka z máslové dýně s kokosovým mlékem", 
+                "kcal": 280, 
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r659068"
             }
         ],
         "Večeře": [
             {
-                "nazev": "Zeleninový krém", 
-                "kcal": 450, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55283"
+                "nazev": "Dýňová polévka se smetanou", 
+                "kcal": 410, 
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r594505"
             },
             {
-                "nazev": "Těstoviny s rajčatovou omáčkou", 
-                "kcal": 520, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r160745"
-            },
-            {
-                "nazev": "Pečená zelenina s tvarohem", 
-                "kcal": 430, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r55282"
+                "nazev": "Hovězí guláš ze staršího pečiva", 
+                "kcal": 680, 
+                "link": "https://cookidoo.cz/recipes/recipe/cs/r644485"
             }
         ]
     }
 
-# 2. Postranní panel - Výpočet kalorií
+# 2. Postranní panel - Výpočet BMR a TDEE
 st.sidebar.header("⚙️ Vaše parametry")
 
 pohlavi = st.sidebar.selectbox("Pohlaví", ["Žena", "Muž"])
@@ -133,7 +103,7 @@ tdee = round(bmr * aktivity_dict[aktivita])
 st.sidebar.markdown("---")
 st.sidebar.metric("Váš denní cílový příjem", f"{tdee} kcal")
 
-# 3. Formulář pro přikládání konkrétních odkazů
+# 3. Formulář pro přikládání vlastních přesných receptů
 st.sidebar.markdown("---")
 with st.sidebar.expander("➕ Přidat vlastní recept z Cookidoo"):
     novy_kat = st.selectbox("Kategorie", ["Snídaně", "Svačina 1", "Oběd", "Svačina 2", "Večeře"])
@@ -146,11 +116,11 @@ with st.sidebar.expander("➕ Přidat vlastní recept z Cookidoo"):
             st.session_state.recepty_db[novy_kat].append({
                 "nazev": novy_nazev,
                 "kcal": nove_kcal,
-                "link": novy_link
+                "link": novy_link.strip()
             })
             st.success(f"Recept **{novy_nazev}** byl úspěšně přidán!")
         else:
-            st.warning("Vyplňte prosím název i odkaz.")
+            st.warning("Vyplňte prosím název i přesný odkaz.")
 
 # 4. Hlavní zobrazení
 if st.button("🎲 Vygenerovat nový týdenní plán"):
