@@ -1,112 +1,54 @@
 import streamlit as st
 import random
+import urllib.parse
 
 st.set_page_config(page_title="Thermomix Jídelníček", page_icon="🍲", layout="wide")
 
 st.title("🍲 Thermomix & Cookidoo Plánovač Jídelníčku")
 
-# 1. Databáze s přesnými názvy a funkčními odkazy na konkrétní recepty
-# Každá kategorie obsahuje dostatek receptů, aby byl vždy zaručen výběr ze 3 jídel
+# Pomocná funkce: Vytvoří přesný vyhledávací odkaz na Cookidoo
+def získej_cookidoo_odkaz(nazev):
+    # Přesná fráze v uvozovkách zajistí, že Cookidoo najde konkrétní recept
+    presny_nazev = f'"{nazev}"'
+    encoded = urllib.parse.quote(presny_nazev)
+    return f"https://cookidoo.cz/search/cs?context=recipes&query={encoded}"
+
+# 1. Databáze s přesnými názvy z Cookidoo a zaručeným výběrem (min. 3 jídla na chod)
 if "recepty_db" not in st.session_state:
     st.session_state.recepty_db = {
         "Snídaně": [
-            {
-                "nazev": "Ovesná kaše s jablky a skořicí", 
-                "kcal": 380, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r594505"
-            },
-            {
-                "nazev": "Nadýchané lívance", 
-                "kcal": 430, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r659068"
-            },
-            {
-                "nazev": "Domácí zapečená granola", 
-                "kcal": 390, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r263673"
-            },
-            {
-                "nazev": "Míchaná vajíčka z Varomy", 
-                "kcal": 410, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r594505"
-            }
+            {"nazev": "Ovesná kaše", "kcal": 380},
+            {"nazev": "Nadýchané lívance", "kcal": 430},
+            {"nazev": "Domácí granola", "kcal": 390},
+            {"nazev": "Míchaná vajíčka", "kcal": 350}
         ],
         "Svačina 1": [
-            {
-                "nazev": "Jablečno-mrkvové pyré", 
-                "kcal": 200, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r594505"
-            },
-            {
-                "nazev": "Ovocné smoothie s banánem", 
-                "kcal": 220, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r263673"
-            },
-            {
-                "nazev": "Jemný tvarohový krém s ovocem", 
-                "kcal": 210, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r659068"
-            }
+            {"nazev": "Jablečné pyré", "kcal": 180},
+            {"nazev": "Ovocné smoothie", "kcal": 210},
+            {"nazev": "Tvarohový krém s ovocem", "kcal": 220},
+            {"nazev": "Mrkvový salát s jablkem", "kcal": 160}
         ],
         "Oběd": [
-            {
-                "nazev": "Dýňová krémová polévka Hokkaidó", 
-                "kcal": 350, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r82858"
-            },
-            {
-                "nazev": "Tradiční hovězí guláš", 
-                "kcal": 720, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r766768"
-            },
-            {
-                "nazev": "Losos na parním koši Varoma s bramborem", 
-                "kcal": 680, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r263673"
-            },
-            {
-                "nazev": "Krémové houbové rizoto", 
-                "kcal": 610, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r644485"
-            }
+            {"nazev": "Dýňová krémová polévka", "kcal": 350},
+            {"nazev": "Svíčková na smetaně", "kcal": 750},
+            {"nazev": "Hovězí guláš", "kcal": 710},
+            {"nazev": "Bramborový guláš", "kcal": 580},
+            {"nazev": "Houbové rizoto", "kcal": 620}
         ],
         "Svačina 2": [
-            {
-                "nazev": "Krémový hummus s cizrnou", 
-                "kcal": 230, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r659068"
-            },
-            {
-                "nazev": "Tvarohová pomazánka s pažitkou", 
-                "kcal": 190, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r594505"
-            },
-            {
-                "nazev": "Kefírové smoothie s borůvkami", 
-                "kcal": 180, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r263673"
-            }
+            {"nazev": "Hummus", "kcal": 230},
+            {"nazev": "Tvarohová pomazánka s pažitkou", "kcal": 190},
+            {"nazev": "Kefírové smoothie s borůvkami", "kcal": 180}
         ],
         "Večeře": [
-            {
-                "nazev": "Krémová zeleninová polévka", 
-                "kcal": 410, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r594505"
-            },
-            {
-                "nazev": "Těstoviny s domáci rajčatovou omáčkou", 
-                "kcal": 520, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r644485"
-            },
-            {
-                "nazev": "Pečená zelenina s bylinkovým tvarohem", 
-                "kcal": 430, 
-                "link": "https://cookidoo.cz/recipes/recipe/cs/r82858"
-            }
+            {"nazev": "Zeleninový krém", "kcal": 390},
+            {"nazev": "Těstoviny s rajčatovou omáčkou", "kcal": 510},
+            {"nazev": "Pečená zelenina s tvarohem", "kcal": 430},
+            {"nazev": "Hrachová polévka", "kcal": 460}
         ]
     }
 
-# 2. Postranní panel - Výpočet BMR a TDEE
+# 2. Postranní panel - Parametry a výpočty
 st.sidebar.header("⚙️ Vaše parametry")
 
 pohlavi = st.sidebar.selectbox("Pohlaví", ["Žena", "Muž"])
@@ -134,45 +76,44 @@ tdee = round(bmr * aktivity_dict[aktivita])
 st.sidebar.markdown("---")
 st.sidebar.metric("Váš denní cílový příjem", f"{tdee} kcal")
 
-# 3. Formulář pro přikládání vlastních přesných receptů
+# 3. Formulář pro přikládání nových receptů
 st.sidebar.markdown("---")
-with st.sidebar.expander("➕ Přidat vlastní recept z Cookidoo"):
+with st.sidebar.expander("➕ Přidat vlastní recept"):
     novy_kat = st.selectbox("Kategorie", ["Snídaně", "Svačina 1", "Oběd", "Svačina 2", "Večeře"])
-    novy_nazev = st.text_input("Přesný název jídla")
+    novy_nazev = st.text_input("Přesný název receptu na Cookidoo")
     nove_kcal = st.number_input("Kalorie (kcal)", min_value=50, max_value=2000, value=400)
-    novy_link = st.text_input("Přímý odkaz z Cookidoo", value="https://cookidoo.cz/recipes/recipe/cs/")
     
     if st.button("Uložit recept"):
-        if novy_nazev and novy_link:
+        if novy_nazev:
             st.session_state.recepty_db[novy_kat].append({
-                "nazev": novy_nazev,
-                "kcal": nove_kcal,
-                "link": novy_link.strip()
+                "nazev": novy_nazev.strip(),
+                "kcal": nove_kcal
             })
             st.success(f"Recept **{novy_nazev}** byl úspěšně přidán!")
         else:
-            st.warning("Vyplňte prosím název i přesný odkaz.")
+            st.warning("Vyplňte prosím název jídla.")
 
-# 4. Hlavní zobrazení
+# 4. Hlavní zobrazovací část
 if st.button("🎲 Vygenerovat nový týdenní plán"):
     st.rerun()
 
 st.subheader("📅 Váš jídelníček na tento týden")
 
-# Funkce, která zobrazuje u každého chodu VŽDY 3 možnosti na výběr
+# Zobrazení VŽDY 3 možností pro každý chod
 def zobraz_den(chody):
     for chod in chody:
         st.write(f"### {chod}")
         dostupne_recepty = st.session_state.recepty_db[chod]
         
-        # Vybere přesně 3 recepty (pokud by jich v databázi bylo méně, zobrazí dostupné)
+        # Výběr 3 náhodných jídel
         pocet_moznosti = min(3, len(dostupne_recepty))
         moznosti = random.sample(dostupne_recepty, pocet_moznosti)
         
         cols = st.columns(3)
         for i, recept in enumerate(moznosti):
+            odkaz = získej_cookidoo_odkaz(recept['nazev'])
             with cols[i]:
-                st.info(f"**{recept['nazev']}**\n\n🔥 ~{recept['kcal']} kcal\n\n[📖 Otevřít recept v Cookidoo]({recept['link']})")
+                st.info(f"**{recept['nazev']}**\n\n🔥 ~{recept['kcal']} kcal\n\n[📖 Otevřít recept na Cookidoo]({odkaz})")
 
 chody_dne = ["Snídaně", "Oběd", "Večeře"] if pocet_jidel == 3 else ["Snídaně", "Svačina 1", "Oběd", "Svačina 2", "Večeře"]
 
