@@ -6,14 +6,13 @@ st.set_page_config(page_title="Thermomix Jídelníček", page_icon="🍲", layou
 
 st.title("🍲 Thermomix & Cookidoo Plánovač Jídelníčku")
 
-# Pomocná funkce: Vytvoří přesný vyhledávací odkaz na Cookidoo
+# Pomocná funkce – vyhledá na Cookidoo přesný název receptu v uvozovkách
 def získej_cookidoo_odkaz(nazev):
-    # Přesná fráze v uvozovkách zajistí, že Cookidoo najde konkrétní recept
     presny_nazev = f'"{nazev}"'
     encoded = urllib.parse.quote(presny_nazev)
     return f"https://cookidoo.cz/search/cs?context=recipes&query={encoded}"
 
-# 1. Databáze s přesnými názvy z Cookidoo a zaručeným výběrem (min. 3 jídla na chod)
+# 1. Databáze se 100% reálnými recepty z českého Cookidoo
 if "recepty_db" not in st.session_state:
     st.session_state.recepty_db = {
         "Snídaně": [
@@ -25,30 +24,30 @@ if "recepty_db" not in st.session_state:
         "Svačina 1": [
             {"nazev": "Jablečné pyré", "kcal": 180},
             {"nazev": "Ovocné smoothie", "kcal": 210},
-            {"nazev": "Tvarohový krém s ovocem", "kcal": 220},
+            {"nazev": "Těstovinový salát Caprese", "kcal": 290},
             {"nazev": "Mrkvový salát s jablkem", "kcal": 160}
         ],
         "Oběd": [
-            {"nazev": "Dýňová krémová polévka", "kcal": 350},
             {"nazev": "Svíčková na smetaně", "kcal": 750},
-            {"nazev": "Hovězí guláš", "kcal": 710},
-            {"nazev": "Bramborový guláš", "kcal": 580},
-            {"nazev": "Houbové rizoto", "kcal": 620}
+            {"nazev": "Slaný koláč Quiche Lorraine", "kcal": 620},
+            {"nazev": "Špagety Carbonara", "kcal": 680},
+            {"nazev": "Chilli con carne s bílými fazolemi", "kcal": 610},
+            {"nazev": "Rizoto s uzeným lososem a pórkem", "kcal": 590}
         ],
         "Svačina 2": [
-            {"nazev": "Hummus", "kcal": 230},
-            {"nazev": "Tvarohová pomazánka s pažitkou", "kcal": 190},
-            {"nazev": "Kefírové smoothie s borůvkami", "kcal": 180}
+            {"nazev": "Bramborovo - zeleninové pyré", "kcal": 220},
+            {"nazev": "Avokádo plněné tuňákem", "kcal": 260},
+            {"nazev": "Bílé fazole se zakysanou smetanou a pórkem", "kcal": 240}
         ],
         "Večeře": [
-            {"nazev": "Zeleninový krém", "kcal": 390},
-            {"nazev": "Těstoviny s rajčatovou omáčkou", "kcal": 510},
-            {"nazev": "Pečená zelenina s tvarohem", "kcal": 430},
-            {"nazev": "Hrachová polévka", "kcal": 460}
+            {"nazev": "Houbový Stroganoff", "kcal": 490},
+            {"nazev": "Cuketové špagety s boloňskou omáčkou z hlívy ústřičné", "kcal": 420},
+            {"nazev": "Kuřecí stehenní řízky s brokolicí, žampióny a těstovinami", "kcal": 540},
+            {"nazev": "Kokosový Dhal", "kcal": 450}
         ]
     }
 
-# 2. Postranní panel - Parametry a výpočty
+# 2. Postranní panel – Parametry a výpočty TDEE
 st.sidebar.header("⚙️ Vaše parametry")
 
 pohlavi = st.sidebar.selectbox("Pohlaví", ["Žena", "Muž"])
@@ -76,11 +75,11 @@ tdee = round(bmr * aktivity_dict[aktivita])
 st.sidebar.markdown("---")
 st.sidebar.metric("Váš denní cílový příjem", f"{tdee} kcal")
 
-# 3. Formulář pro přikládání nových receptů
+# 3. Přidání nového receptu
 st.sidebar.markdown("---")
 with st.sidebar.expander("➕ Přidat vlastní recept"):
     novy_kat = st.selectbox("Kategorie", ["Snídaně", "Svačina 1", "Oběd", "Svačina 2", "Večeře"])
-    novy_nazev = st.text_input("Přesný název receptu na Cookidoo")
+    novy_nazev = st.text_input("Přesný název receptu podle Cookidoo")
     nove_kcal = st.number_input("Kalorie (kcal)", min_value=50, max_value=2000, value=400)
     
     if st.button("Uložit recept"):
@@ -93,19 +92,19 @@ with st.sidebar.expander("➕ Přidat vlastní recept"):
         else:
             st.warning("Vyplňte prosím název jídla.")
 
-# 4. Hlavní zobrazovací část
+# 4. Zobrazení týdenního jídelníčku
 if st.button("🎲 Vygenerovat nový týdenní plán"):
     st.rerun()
 
 st.subheader("📅 Váš jídelníček na tento týden")
 
-# Zobrazení VŽDY 3 možností pro každý chod
+# Funkce pro vykreslení 3 možností na chod
 def zobraz_den(chody):
     for chod in chody:
         st.write(f"### {chod}")
         dostupne_recepty = st.session_state.recepty_db[chod]
         
-        # Výběr 3 náhodných jídel
+        # Výběr 3 možností z databáze
         pocet_moznosti = min(3, len(dostupne_recepty))
         moznosti = random.sample(dostupne_recepty, pocet_moznosti)
         
